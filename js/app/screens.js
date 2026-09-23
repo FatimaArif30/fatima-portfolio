@@ -274,25 +274,24 @@ export function makeScreens(C, { big = [1600, 672], side = [900, 640], mon = [51
 
   // Simulator cabinet attract screen
   const simTex = ctex(512, 400, (g, w, h, t) => {
-    g.fillStyle = '#01030a'; g.fillRect(0, 0, w, h);
-    for (let i = 0; i < 60; i++) { g.fillStyle = 'rgba(255,255,255,0.7)'; g.fillRect((i * 97) % w, (i * 53) % (h * 0.6), 2, 2); }
-    g.fillStyle = '#6fb0ff'; g.beginPath(); g.arc(w * 0.82, h * 0.2, 26, 0, TAU); g.fill();
-    g.fillStyle = 'rgba(0,0,0,0.5)'; g.beginPath(); g.arc(w * 0.82 + 10, h * 0.2 + 4, 26, 0, TAU); g.fill();
-    // terrain
-    g.fillStyle = '#6a6e78'; g.beginPath(); g.moveTo(0, h);
-    for (let x = 0; x <= w; x += 16) g.lineTo(x, h * 0.78 + Math.sin(x * 0.03) * 16 + Math.sin(x * 0.11) * 6 - (x > 200 && x < 290 ? 0 : 0));
-    g.lineTo(w, h); g.fill();
-    g.strokeStyle = '#eef3ff'; g.lineWidth = 3; g.beginPath(); g.moveTo(210, h * 0.78 + Math.sin(210 * 0.03) * 16 + Math.sin(210 * 0.11) * 6); g.lineTo(280, h * 0.78 + Math.sin(210 * 0.03) * 16 + Math.sin(210 * 0.11) * 6); g.stroke();
-    // lander bobbing
-    const ly = h * 0.38 + Math.sin(t * 1.4) * 18, lx = 245 + Math.sin(t * 0.7) * 30;
-    g.save(); g.translate(lx, ly);
-    g.fillStyle = 'rgba(255,181,71,0.9)'; g.beginPath(); g.moveTo(-6, 16); g.lineTo(0, 30 + Math.random() * 10); g.lineTo(6, 16); g.fill();
-    g.fillStyle = '#e9c46a'; g.fillRect(-14, 2, 28, 12); g.fillStyle = '#e6e9ef'; g.beginPath(); g.arc(0, -4, 10, 0, TAU); g.fill();
-    g.strokeStyle = '#cfd5df'; g.lineWidth = 2; g.beginPath(); g.moveTo(-12, 12); g.lineTo(-22, 26); g.moveTo(12, 12); g.lineTo(22, 26); g.stroke();
-    g.restore();
-    g.textAlign = 'center'; g.fillStyle = '#fff'; g.font = F(700, 44, 'd'); g.fillText('LUNAR LANDER', w / 2, 58);
-    g.font = F(600, 20, 'm'); g.fillStyle = Math.sin(t * 4) > 0 ? '#ffb547' : 'rgba(255,181,71,0.25)'; g.fillText('CLICK TO PLAY', w / 2, 96);
-    if (state.topScore) { g.fillStyle = P.a1; g.font = F(500, 18, 'm'); g.fillText(`TOP PILOT ${state.topScore}`, w / 2, h - 16); }
+    const sky = g.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, '#02030a'); sky.addColorStop(0.6, '#1a1840'); sky.addColorStop(1, '#6b3a6e');
+    g.fillStyle = sky; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 50; i++) { g.fillStyle = 'rgba(255,255,255,0.7)'; g.fillRect((i * 97) % w, (i * 53) % (h * 0.5), 2, 2); }
+    // a rocket being stacked: stages grow over a 9 second loop
+    const n = Math.floor((t % 9) / 0.75) + 1, bh = 17, base = h - 22;
+    g.fillStyle = '#23262e'; g.fillRect(w / 2 - 70, base, 140, 8);
+    for (let i = 0; i < n; i++) {
+      const sw = 92 - i * 4 + ((i * 37) % 7) - 3, x = w / 2 - sw / 2 + ((i * 53) % 9) - 4, y = base - (i + 1) * bh;
+      const gr = g.createLinearGradient(x, 0, x + sw, 0); gr.addColorStop(0, '#9aa1ae'); gr.addColorStop(0.35, '#fff'); gr.addColorStop(1, '#8a909c');
+      g.fillStyle = gr; g.fillRect(x, y, sw, bh - 1);
+      g.fillStyle = `hsl(${(205 + i * 11) % 360},95%,60%)`; g.fillRect(x, y + bh * 0.62, sw, bh * 0.22);
+    }
+    // the next stage sliding across
+    const sx = w / 2 + Math.sin(t * 2.6) * 150, sw2 = 92 - n * 4, sy = base - (n + 1) * bh;
+    if (n < 12) { g.fillStyle = '#eef0f5'; g.fillRect(sx - sw2 / 2, sy, sw2, bh - 1); g.fillStyle = `hsl(${(205 + n * 11) % 360},95%,60%)`; g.fillRect(sx - sw2 / 2, sy + bh * 0.62, sw2, bh * 0.22); }
+    g.textAlign = 'center'; g.fillStyle = '#fff'; g.font = F(700, 40, 'd'); g.fillText('STACK TO THE STARS', w / 2, 54);
+    g.font = F(600, 20, 'm'); g.fillStyle = Math.sin(t * 4) > 0 ? '#ffb547' : 'rgba(255,181,71,0.25)'; g.fillText('CLICK TO PLAY', w / 2, 90);
+    if (state.topScore) { g.fillStyle = P.a1; g.font = F(500, 18, 'm'); g.fillText(`TOP BUILDER ${state.topScore}`, w / 2, 118); }
     g.textAlign = 'left';
   });
   const marqueeTex = ctex(512, 96, (g, w, h) => {

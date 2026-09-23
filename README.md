@@ -8,14 +8,14 @@ All text (about, projects, experience, skills, contact) lives in **`js/content.j
 Edit it, save, then push to GitHub. Both the 3D room and the Quick view update.
 
 ## Pages
-- `/` — 3D Mission Control (boot screen, stations, Lunar Lander, launch sequence)
+- `/` — 3D Mission Control (boot screen, stations, Stack to the Stars, launch sequence)
 - `/quick` — Quick view (plain page, instant, good for Google)
-- `/games/lander/` — Lunar Lander (also opens inside the room)
+- `/games/stack` — Stack to the Stars, the one-tap game (also opens inside the room)
 - `/games/graze-rider/`, `/games/merge-garden/` — game demos
 
-## Lunar Lander leaderboard (Supabase)
+## Game leaderboard (Supabase)
 1. Create a free Supabase project.
-2. SQL Editor → paste `supabase/leaderboard.sql` → Run.
+2. SQL Editor → paste `supabase/stack-leaderboard.sql` → Run.
 3. Settings → API: copy the Project URL and the `anon` public key into `js/config.js`.
 4. Push. Until then, the game keeps a personal best on each device.
 

@@ -156,7 +156,7 @@ export async function createApp({ quality, reduced }) {
       <div class="tour">
         <button type="button" class="btn" data-go="about">Start the tour →</button>
         <button type="button" class="btn ghost" data-go="projects">See projects</button>
-        <button type="button" class="btn ghost" data-go="simulator">Play Lunar Lander</button>
+        <button type="button" class="btn ghost" data-go="simulator">Play Stack to the Stars</button>
       </div>
       <h3 class="sub">Live right now</h3>
       <p>${issLine}</p>
@@ -189,7 +189,7 @@ export async function createApp({ quality, reduced }) {
     if (key === 'simulator') {
       current = 'simulator'; setNav(key);
       await rig.flyTo(s.view, 1.4);
-      openGame('/games/lander', 'Lunar Lander · FA-01 Simulator', $('stations').querySelector('[data-station="simulator"]'));
+      openGame('/games/stack', 'Stack to the Stars · FA-01 Simulator', $('stations').querySelector('[data-station="simulator"]'));
       return;
     }
     if (key === 'contact') { current = 'contact'; setNav(key); await rig.flyTo(s.view, 1.3); runLaunch(); return; }
@@ -285,7 +285,7 @@ export async function createApp({ quality, reduced }) {
 
   // top score for the arcade screen
   if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-    fetch(`${SUPABASE_URL}/rest/v1/lander_scores?select=initials,score&order=score.desc&limit=1`, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } })
+    fetch(`${SUPABASE_URL}/rest/v1/stack_scores?select=initials,score&order=score.desc&limit=1`, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } })
       .then((r) => (r.ok ? r.json() : [])).then((d) => { if (d[0]) screens.state.topScore = `${d[0].initials} ${d[0].score}`; }).catch(() => {});
   }
 

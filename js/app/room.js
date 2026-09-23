@@ -131,7 +131,7 @@ export function buildRoom({ screens, settings, envMap }) {
   });
   const logAnchor = new THREE.Object3D(); logAnchor.position.set(0, 2.35, -0.35); logConsole.add(logAnchor);
 
-  /* ── Flight simulator cabinet (Lunar Lander) ── */
+  /* ── Flight simulator cabinet (Stack to the Stars) ── */
   const cab = new THREE.Group(); cab.position.set(14.6, 0, -3.4); cab.rotation.y = -0.9; scene.add(cab);
   const cabMat = new THREE.MeshStandardMaterial({ color: 0x1c2436, roughness: 0.4, metalness: 0.5, envMapIntensity: 0.4 });
   const cabBody = new THREE.Mesh(new THREE.BoxGeometry(1.9, 3.6, 1.3), cabMat); cabBody.position.y = 1.8; cabBody.castShadow = true; cab.add(cabBody);
@@ -210,7 +210,7 @@ export function buildRoom({ screens, settings, envMap }) {
     skills: { label: 'Skills', sub: 'systems', anchor: side.skills.anchor, hit: [side.skills.screen], glow: [side.skills.screen], view: sideView('skills') },
     experience: { label: 'Experience', sub: 'flight log', anchor: logAnchor, hit: logConsole.userData.screens, glow: logConsole.userData.screens, view: { pos: logWorld.clone().add(V3(0, 0.95, 3.4)), target: logWorld.clone().add(V3(0, -0.05, 0)) } },
     contact: { label: 'Contact', sub: 'launch comms', anchor: clockAnchor, hit: [clock], glow: [clock], view: { pos: V3(0, 10.6, 6), target: V3(0, 10.2, -14) } },
-    simulator: { label: 'Play Lunar Lander', sub: 'simulator', anchor: cabAnchor, hit: [cabBody, cabScreen, marquee], glow: [cabScreen], view: { pos: cabScreenWorld.clone().addScaledVector(cabFacing, 4.2).add(V3(0, 0.2, 0)), target: cabScreenWorld.clone() } },
+    simulator: { label: 'Play Stack to the Stars', sub: 'simulator', anchor: cabAnchor, hit: [cabBody, cabScreen, marquee], glow: [cabScreen], view: { pos: cabScreenWorld.clone().addScaledVector(cabFacing, 4.2).add(V3(0, 0.2, 0)), target: cabScreenWorld.clone() } },
     briefing: { label: 'Mission briefing', sub: 'start here', anchor: holoAnchor, hit: [ped, wire], glow: [], view: { pos: V3(0, 4.4, -1.2), target: V3(0, 3.1, -8.2) } },
   };
   for (const s of Object.values(stations)) if (s.hit) s.hit.forEach((m) => { m.userData.station = s; });

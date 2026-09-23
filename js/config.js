@@ -1,7 +1,7 @@
 /*
-  Supabase settings for the Lunar Lander leaderboard.
+  Supabase settings for the Stack to the Stars leaderboard.
   1. Create a free Supabase project.
-  2. Run supabase/leaderboard.sql in its SQL Editor.
+  2. Run supabase/stack-leaderboard.sql in its SQL Editor.
   3. Paste the Project URL and the "anon public" key below, save, git push.
   The anon key is safe to be public: the database only allows reading
   scores and adding scores through a checked function.
