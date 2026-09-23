@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Merge Garden Bloom</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
+  html,body{height:100%;overflow:hidden;background:#E4EFDC;
+    font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
+    user-select:none;touch-action:none;}
+  #fit{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(900px 700px at 50% -10%,#F6FAF2,#DCEAD2);}
+
+  /* one logical stage scaled as a unit — identical layout at every size */
+  #stage{--ui:1;position:relative;width:420px;height:780px;flex:0 0 auto;
+    transform-origin:center center;overflow:hidden;border-radius:20px;
+    background:radial-gradient(900px 700px at 50% -10%,#F5FAF0,#DDEBD3);
+    box-shadow:0 24px 70px rgba(70,95,55,.28);}
+  canvas{display:block;width:420px;height:780px;}
+
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;
+    justify-content:center;padding:26px 24px;z-index:10;
+    background:linear-gradient(180deg,rgba(246,251,242,.94),rgba(222,236,212,.96));}
+  .screen.on{display:flex;}
+
+  h1{font-size:50px;font-weight:800;line-height:.95;text-align:center;color:#33422F;letter-spacing:-.01em;}
+  h1 .g{color:#57A046;}
+  h2{font-size:28px;font-weight:800;text-align:center;color:#33422F;}
+  .tag{color:#7C8B72;font-weight:800;font-size:calc(12px * var(--ui));letter-spacing:.2em;margin-top:10px;text-align:center;}
+
+  .btn{border:none;cursor:pointer;font:inherit;font-weight:800;border-radius:999px;
+    display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .07s,filter .15s;}
+  .btn:active{transform:translateY(3px);}
+  .btn-lg{font-size:20px;padding:16px 0;width:230px;}
+  .btn-md{font-size:calc(15px * var(--ui));padding:12px 0;width:200px;}
+  .green{background:linear-gradient(180deg,#7CC167,#548E46);color:#fff;box-shadow:0 5px 0 #3F6F34,0 10px 24px rgba(84,142,70,.35);}
+  .ghost{background:rgba(80,110,70,.10);color:#33422F;border:1px solid rgba(80,110,70,.22);}
+  .gold{background:linear-gradient(180deg,#F0C24E,#C9912A);color:#fff;
+    box-shadow:0 5px 0 #8A6A1E,0 10px 24px rgba(201,145,42,.35);font-size:calc(15px * var(--ui));}
+
+  .chips{display:flex;gap:10px;margin-top:16px;}
+  .chip{background:#fff;border:1px solid #DCE7D5;border-radius:999px;padding:7px 14px;
+    color:#33422F;font-weight:800;font-size:calc(13px * var(--ui));display:flex;align-items:center;gap:6px;
+    box-shadow:0 2px 0 rgba(90,120,80,.08);}
+  .chip .lbl{font-size:calc(9px * var(--ui));letter-spacing:.12em;color:#7C8B72;}
+
+  .panel{width:100%;background:#fff;border:1px solid #DCE7D5;border-radius:16px;padding:12px;margin-top:16px;
+    box-shadow:0 2px 0 rgba(90,120,80,.07);}
+  .panel h3{font-size:calc(10px * var(--ui));letter-spacing:.18em;color:#8B9A82;font-weight:800;margin-bottom:8px;}
+  .row{display:flex;align-items:center;gap:10px;font-size:calc(12.5px * var(--ui));color:#33422F;font-weight:700;margin-bottom:6px;}
+  .row:last-child{margin-bottom:0;}
+  .row .ic{width:26px;height:26px;flex:0 0 auto;}
+  /* an SVG with no explicit size falls back to 300x150 and bursts its box —
+     Playgama's self-check fails games with interface elements cut off */
+  .row .ic svg{width:100%;height:100%;display:block;}
+  #fBest.row{align-items:center;}
+
+  #topbar{position:absolute;top:0;left:0;right:0;height:44px;z-index:12;display:flex;
+    align-items:center;gap:8px;padding:0 12px;pointer-events:none;}
+  #topbar .sp{flex:1;}
+  .icobtn{pointer-events:auto;min-width:34px;height:34px;border-radius:999px;padding:0 10px;
+    border:1px solid #CFDCC6;background:rgba(255,255,255,.9);color:#33422F;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;}
+  .hide{display:none!important;}
+
+  .note{color:#7C8B72;font-size:calc(11.5px * var(--ui));text-align:center;margin-top:12px;line-height:1.5;}
+  .big{font-size:42px;font-weight:800;color:#C9912A;text-align:center;}
+  .sub{font-size:calc(10.5px * var(--ui));letter-spacing:.16em;color:#8B9A82;font-weight:800;text-align:center;margin-top:2px;}
+  #boot{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
+    background:#EEF6E8;color:#7C8B72;font-weight:800;font-size:14px;}
+</style>
+</head>
+<body>
+<div id="fit"><div id="stage">
+  <canvas id="cv"></canvas>
+
+  <div id="topbar">
+    <button class="icobtn hide" id="btnMenuBtn" aria-label="Back to menu">☰</button>
+    <div class="sp"></div>
+    <button class="icobtn hide" id="btnSkip" aria-label="Skip tutorial">SKIP</button>
+    <button class="icobtn" id="btnSound" aria-label="Sound on or off">♪</button>
+  </div>
+
+  <div id="boot">Loading…</div>
+
+  <!-- MENU -->
+  <div class="screen" id="scMenu">
+    <h1>Merge<br><span class="g">Garden Bloom</span></h1>
+    <div class="tag">GROW · MERGE · DELIVER</div>
+    <div class="chips">
+      <div class="chip"><span class="lbl">BEST</span><span id="mBest">0</span></div>
+      <div class="chip">🪙<span id="mCoins">0</span></div>
+    </div>
+    <div class="panel"><h3>YOUR GARDEN</h3><div id="mStats"></div></div>
+    <button class="btn btn-lg green" id="btnPlay" style="margin-top:20px">PLANT</button>
+    <div class="note" id="mHint">Drag two matching plants together to grow a better one</div>
+  </div>
+
+  <!-- GARDEN FULL -->
+  <div class="screen" id="scFull">
+    <h2>Garden is full!</h2>
+    <div class="note" style="margin-top:6px">No space left and nothing left to merge.</div>
+    <div class="big" id="fCoins" style="margin-top:16px">0</div>
+    <div class="sub">COINS THIS GARDEN</div>
+    <div class="chips">
+      <div class="chip"><span class="lbl">MERGES</span><span id="fMerges">0</span></div>
+      <div class="chip"><span class="lbl">ORDERS</span><span id="fOrders">0</span></div>
+    </div>
+    <div class="panel"><h3>BEST PLANT GROWN</h3><div id="fBest" class="row"></div></div>
+    <button class="btn btn-lg gold hide" id="btnRevive" style="margin-top:16px">▶ WATCH AD — CLEAR 3 PLANTS</button>
+    <button class="btn btn-lg green" id="btnNew" style="margin-top:12px">NEW GARDEN</button>
+    <button class="btn btn-md ghost" id="btnToMenu" style="margin-top:10px">MENU</button>
+  </div>
+</div></div>
+
+<script>
+
+/* Playgama Bridge adapter.
+   Progress goes through bridge.storage only, as their self-check requires. */
+const PF = {
+  name: 'portfolio',
+  ok: false,
+  _pause: [], _audio: [],
+
+  async init(){
+    if (typeof bridge === 'undefined') return;                 // never hard-fail
+    try {
+      await bridge.initialize();
+      this.ok = true;
+
+      bridge.platform.on(bridge.EVENT_NAME.PAUSE_STATE_CHANGED,
+        isPaused => this._pause.forEach(cb => cb(!!isPaused)));
+
+      bridge.platform.on(bridge.EVENT_NAME.AUDIO_STATE_CHANGED,
+        enabled => this._audio.forEach(cb => cb(!!enabled)));
+
+      /* an ad opening must silence the game */
+      bridge.advertisement.on(bridge.EVENT_NAME.INTERSTITIAL_STATE_CHANGED, state => {
+        const playing = (state === 'opened' || state === 'loading');
+        this._audio.forEach(cb => cb(!playing && this.audioAllowed()));
+        this._pause.forEach(cb => cb(state === 'opened'));
+      });
+
+      /* Their docs are explicit: grant on 'rewarded' only. Granting on
+         'closed' would let players claim without watching.
+         _pending guards against a stray event from an earlier request
+         being counted towards the current one. */
+      bridge.advertisement.on(bridge.EVENT_NAME.REWARDED_STATE_CHANGED, state => {
+        if (state === 'opened'){
+          this._audio.forEach(cb => cb(false));
+          this._pause.forEach(cb => cb(true));
+        }
+        /* Their example grants at exactly this point, so do the same: the
+           reward is handed over the instant the state is 'rewarded', and never
+           anywhere else. If 'closed' or 'failed' arrives first, the request is
+           settled as a refusal and a late 'rewarded' can no longer pay out. */
+        if (state === 'rewarded'){
+          if (this._pending) this._settle(true);
+        }
+        if (state === 'closed' || state === 'failed'){
+          this._pause.forEach(cb => cb(false));
+          this._audio.forEach(cb => cb(this.audioAllowed()));
+          this._settle(false);
+        }
+      });
+
+      bridge.advertisement.setMinimumDelayBetweenInterstitial(60);
+    } catch(e){}
+  },
+
+  _settle(v){
+    const r = this._resolve;
+    this._resolve = null; this._earned = false; this._pending = false;
+    if (r) r(v);
+  },
+  /* their docs: check this before showing a rewarded-ad button */
+  hasRewarded(){
+    try { return this.ok && bridge.advertisement.isRewardedSupported !== false; }
+    catch(e){ return false; }
+  },
+  rewarded(placement){
+    /* No reward is ever handed out without a real 'rewarded' event —
+       not on a failed SDK, not on an early close. */
+    if (!this.ok) return Promise.resolve(false);
+    if (this._resolve) return Promise.resolve(false); // one at a time
+    return new Promise(res => {
+      this._resolve = res; this._earned = false; this._pending = true;
+      /* if the SDK never reports back, don't leave the button dead */
+      const t = setTimeout(() => this._settle(false), 45000);
+      const wrapped = this._resolve;
+      this._resolve = v => { clearTimeout(t); wrapped(v); };
+      try { bridge.advertisement.showRewarded(placement || 'reward'); }
+      catch(e){ this._settle(false); }
+    });
+  },
+
+  ready(){
+    try { if (this.ok) bridge.platform.sendMessage('game_ready'); } catch(e){}
+  },
+
+  async get(k){
+    if (!this.ok) { try { return localStorage.getItem('mgb_' + k); } catch(e){ return null; } }
+    try { const d = await bridge.storage.get([k]); return d && d[0] != null ? d[0] : null; }
+    catch(e){ return null; }
+  },
+
+  async set(k, v){
+    if (!this.ok) { try { localStorage.setItem('mgb_' + k, v); } catch(e){} return; }
+    try { await bridge.storage.set([k], [v]); } catch(e){}
+  },
+
+  audioAllowed(){
+    try { return this.ok ? bridge.platform.isAudioEnabled !== false : true; } catch(e){ return true; }
+  },
+
+  onPause(cb){ this._pause.push(cb); },
+  onAudio(cb){ this._audio.push(cb); },
+
+  interstitial(placement){
+    try { if (this.ok) bridge.advertisement.showInterstitial(placement || 'garden_full'); } catch(e){}
+  }
+};
+
+</script>
+
+<script>
+(function(){
+"use strict";
+
+/* ══════════════ STAGE ══════════════ */
+const SW=420, SH=780;
+const stage=document.getElementById('stage');
+let UIK=1;
+function fit(){
+  const k=Math.min(window.innerWidth/SW, window.innerHeight/SH);
+  stage.style.transform='scale('+k+')';
+  UIK=Math.min(1.42, Math.max(1, 0.82/k));
+  stage.style.setProperty('--ui', UIK);
+}
+window.addEventListener('resize',fit); fit();
+
+const cv=document.getElementById('cv');
+const cx=cv.getContext('2d');
+const DPR=Math.min(window.devicePixelRatio||1,2);
+cv.width=SW*DPR; cv.height=SH*DPR; cx.setTransform(DPR,0,0,DPR,0,0);
+
+/* ══════════════ PLANTS ══════════════ */
+/* the xmlns is required: without it these load fine as DOM markup but fail
+   silently when used as an <img> source on the canvas */
+const S=i=>'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'+i+'</svg>';
+const TIERS=[
+  {name:"Seed",pay:5,art:S(
+    '<ellipse cx="50" cy="54" rx="19" ry="25" fill="#A8764F"/>'+
+    '<ellipse cx="50" cy="54" rx="19" ry="25" fill="none" stroke="#8A5D3B" stroke-width="3"/>'+
+    '<ellipse cx="43" cy="45" rx="6" ry="9" fill="#C79268" opacity=".85"/>')},
+  {name:"Sprout",pay:12,art:S(
+    '<path d="M50 82V56" stroke="#5C9E4C" stroke-width="7" stroke-linecap="round"/>'+
+    '<path d="M50 62c-2-12-12-18-22-16 0 12 10 19 22 16z" fill="#7CC26A"/>'+
+    '<path d="M50 58c2-11 11-16 20-14 0 11-9 17-20 14z" fill="#96D384"/>'+
+    '<ellipse cx="50" cy="84" rx="17" ry="5" fill="#B58A63" opacity=".5"/>')},
+  {name:"Leaf",pay:28,art:S(
+    '<path d="M50 86V50" stroke="#4E8C41" stroke-width="6" stroke-linecap="round"/>'+
+    '<path d="M50 52C26 52 16 34 20 14c22-2 34 16 30 38z" fill="#63B152"/>'+
+    '<path d="M50 52C74 52 84 34 80 14 58 12 46 30 50 52z" fill="#7FC96D"/>'+
+    '<path d="M50 50 30 22M50 50 70 22" stroke="#4E8C41" stroke-width="3" stroke-linecap="round"/>')},
+  {name:"Bud",pay:60,art:S(
+    '<path d="M50 88V52" stroke="#4E8C41" stroke-width="6" stroke-linecap="round"/>'+
+    '<path d="M50 70c-14 0-20-8-19-18 12-2 19 6 19 18z" fill="#63B152"/>'+
+    '<path d="M50 36c11 0 18 9 18 20s-8 18-18 18-18-7-18-18 7-20 18-20z" fill="#F2A0B8"/>'+
+    '<path d="M50 36c8 3 12 11 12 20s-4 16-12 18z" fill="#F7BDCE"/>'+
+    '<path d="M50 30c3 0 5 3 5 7h-10c0-4 2-7 5-7z" fill="#E07A9A"/>')},
+  {name:"Blossom",pay:130,art:S(
+    '<path d="M50 90V56" stroke="#4E8C41" stroke-width="6" stroke-linecap="round"/>'+
+    '<path d="M50 74c-14 0-20-8-19-18 12-2 19 6 19 18z" fill="#63B152"/>'+
+    '<g><ellipse cx="50" cy="22" rx="13" ry="16" fill="#F58FAF"/>'+
+    '<ellipse cx="76" cy="40" rx="13" ry="16" fill="#F58FAF" transform="rotate(72 76 40)"/>'+
+    '<ellipse cx="66" cy="66" rx="13" ry="16" fill="#F58FAF" transform="rotate(144 66 66)"/>'+
+    '<ellipse cx="34" cy="66" rx="13" ry="16" fill="#F58FAF" transform="rotate(216 34 66)"/>'+
+    '<ellipse cx="24" cy="40" rx="13" ry="16" fill="#F58FAF" transform="rotate(288 24 40)"/></g>'+
+    '<circle cx="50" cy="44" r="13" fill="#FBD86B"/><circle cx="50" cy="44" r="7" fill="#F2B93C"/>')},
+  {name:"Sunflower",pay:280,art:S(
+    '<path d="M50 92V60" stroke="#4E8C41" stroke-width="7" stroke-linecap="round"/>'+
+    '<path d="M50 78c-15 0-22-9-21-20 13-2 21 7 21 20z" fill="#63B152"/>'+
+    '<path d="M50 76c15 0 21-8 20-18-12-2-20 6-20 18z" fill="#7FC96D"/>'+
+    '<g fill="#F7C33F">'+
+    '<ellipse cx="50" cy="12" rx="8" ry="15"/><ellipse cx="77" cy="21" rx="8" ry="15" transform="rotate(45 77 21)"/>'+
+    '<ellipse cx="86" cy="42" rx="8" ry="15" transform="rotate(90 86 42)"/><ellipse cx="77" cy="63" rx="8" ry="15" transform="rotate(135 77 63)"/>'+
+    '<ellipse cx="50" cy="72" rx="8" ry="15"/><ellipse cx="23" cy="63" rx="8" ry="15" transform="rotate(45 23 63)"/>'+
+    '<ellipse cx="14" cy="42" rx="8" ry="15" transform="rotate(90 14 42)"/><ellipse cx="23" cy="21" rx="8" ry="15" transform="rotate(135 23 21)"/></g>'+
+    '<circle cx="50" cy="42" r="18" fill="#7A5230"/><circle cx="50" cy="42" r="12" fill="#9B6A3E"/>'+
+    '<circle cx="45" cy="37" r="3" fill="#C08A52"/><circle cx="55" cy="45" r="3" fill="#C08A52"/>')},
+  {name:"Potted Plant",pay:560,art:S(
+    '<path d="M50 62V44" stroke="#4E8C41" stroke-width="6" stroke-linecap="round"/>'+
+    '<path d="M50 48C30 48 20 34 22 16c20-2 30 14 28 32z" fill="#5FAE4E"/>'+
+    '<path d="M50 46c20 0 30-14 28-32-20-2-30 14-28 32z" fill="#7FC96D"/>'+
+    '<path d="M26 62h48l-6 30H32z" fill="#E08A5F"/>'+
+    '<path d="M50 62h24l-6 30H50z" fill="#C8734B"/>'+
+    '<rect x="21" y="55" width="58" height="12" rx="5" fill="#EF9B70"/>'+
+    '<rect x="50" y="55" width="29" height="12" rx="5" fill="#D8825A"/>')},
+  {name:"Blossom Tree",pay:1100,art:S(
+    '<path d="M50 92V56M50 68 34 54M50 62l16-14" stroke="#8A5D3B" stroke-width="8" stroke-linecap="round"/>'+
+    '<circle cx="32" cy="42" r="20" fill="#F9AFC7"/><circle cx="68" cy="42" r="20" fill="#F9AFC7"/>'+
+    '<circle cx="50" cy="26" r="22" fill="#FBC2D5"/><circle cx="50" cy="46" r="20" fill="#F79FBC"/>'+
+    '<circle cx="38" cy="22" r="4" fill="#FFF" opacity=".7"/><circle cx="62" cy="34" r="3" fill="#FFF" opacity=".7"/>'+
+    '<circle cx="70" cy="50" r="3.5" fill="#FFF" opacity=".7"/>'+
+    '<ellipse cx="50" cy="93" rx="24" ry="5" fill="#8FBF7E" opacity=".45"/>')},
+  {name:"Golden Tree",pay:2600,art:S(
+    '<path d="M50 92V54M50 68 32 52M50 60l18-14" stroke="#B07E2E" stroke-width="8" stroke-linecap="round"/>'+
+    '<circle cx="31" cy="40" r="20" fill="#E8B23C"/><circle cx="69" cy="40" r="20" fill="#E8B23C"/>'+
+    '<circle cx="50" cy="24" r="22" fill="#F7D264"/><circle cx="50" cy="45" r="20" fill="#EFC24E"/>'+
+    '<path d="M50 8l3 7 7 3-7 3-3 7-3-7-7-3 7-3z" fill="#FFF6D6"/>'+
+    '<path d="M22 30l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="#FFF6D6"/>'+
+    '<path d="M79 48l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="#FFF6D6"/>'+
+    '<ellipse cx="50" cy="93" rx="24" ry="5" fill="#D9B764" opacity=".45"/>')}
+];
+const MAXT=TIERS.length-1;
+const COIN='<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="38" fill="#F0C24E" stroke="#C9912A" stroke-width="6"/><circle cx="50" cy="50" r="24" fill="#F8DC8C"/></svg>';
+
+/* ══════════════ AUDIO ══════════════ */
+const AU={
+  ctx:null,master:null,mus:null,sfx:null,ready:false,playing:false,
+  step:0,nextT:0,timer:null,allowed:true,
+  init(){
+    if(this.ready)return;
+    const AC=window.AudioContext||window.webkitAudioContext; if(!AC)return;
+    this.ctx=new AC();
+    this.master=this.ctx.createGain(); this.master.gain.value=this.want();
+    this.master.connect(this.ctx.destination);
+    this.mus=this.ctx.createGain(); this.mus.gain.value=0.15; this.mus.connect(this.master);
+    this.sfx=this.ctx.createGain(); this.sfx.gain.value=0.30; this.sfx.connect(this.master);
+    this.ready=true;
+  },
+  want(){ return (D.sound && this.allowed) ? 0.9 : 0; },
+  apply(){ if(this.master) this.master.gain.setTargetAtTime(this.want(), this.ctx.currentTime, 0.02); },
+  resume(){ if(this.ctx&&this.ctx.state==='suspended') this.ctx.resume(); },
+  /* the portals require audio to stop for ads and when the tab is hidden */
+  setAllowed(v){ this.allowed=v; this.apply(); if(!v) this.stopMusic(); },
+  setOn(v){ D.sound=v; saveSoon(); this.apply(); },
+  tone(f,dur,type,g0,slide){
+    if(!this.ready)return; const t=this.ctx.currentTime;
+    const o=this.ctx.createOscillator(),g=this.ctx.createGain();
+    o.type=type||'sine'; o.frequency.setValueAtTime(f,t);
+    if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(20,slide),t+dur);
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(g0,t+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0008,t+dur);
+    o.connect(g); g.connect(this.sfx); o.start(t); o.stop(t+dur+0.02);
+  },
+  play(n){
+    if(!this.ready||!D.sound||!this.allowed)return;
+    switch(n){
+      case 'plant': this.tone(300,0.13,'triangle',0.12,460); break;
+      case 'merge': [523,659,784].forEach((f,i)=>setTimeout(()=>this.tone(f,0.20,'triangle',0.10),i*40)); break;
+      case 'deliver':[784,988,1175].forEach((f,i)=>setTimeout(()=>this.tone(f,0.22,'sine',0.11),i*55)); break;
+      case 'newtier':[523,659,784,1047].forEach((f,i)=>setTimeout(()=>this.tone(f,0.30,'triangle',0.11),i*80)); break;
+      case 'ui': this.tone(520,0.06,'sine',0.09); break;
+      case 'nope': this.tone(180,0.14,'sine',0.09,130); break;
+      case 'full': [392,330,262].forEach((f,i)=>setTimeout(()=>this.tone(f,0.32,'sine',0.10),i*130)); break;
+    }
+  },
+  /* warm major bed: C - Am - F - G at ~90bpm */
+  CH:[[130.81,261.63,329.63,392.00],[110,220,261.63,329.63],[87.31,174.61,220,261.63],[98,196,246.94,293.66]],
+  startMusic(){
+    if(!this.ready||this.playing||!D.sound||!this.allowed)return;
+    this.playing=true; this.step=0; this.nextT=this.ctx.currentTime+0.06;
+    this.timer=setInterval(()=>this.sched(),60);
+  },
+  stopMusic(){ this.playing=false; if(this.timer){clearInterval(this.timer); this.timer=null;} },
+  sched(){
+    if(!this.playing)return;
+    const SPB=0.1667;
+    while(this.nextT<this.ctx.currentTime+0.25){
+      const s=this.step, bar=Math.floor(s/16)%4, ch=this.CH[bar], t=this.nextT, g16=s%16;
+      if(g16%8===0){
+        const o=this.ctx.createOscillator(),g=this.ctx.createGain(),f=this.ctx.createBiquadFilter();
+        f.type='lowpass'; f.frequency.value=520;
+        o.type='triangle'; o.frequency.setValueAtTime(ch[0],t);
+        g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.26,t+0.05);
+        g.gain.exponentialRampToValueAtTime(0.001,t+1.0);
+        o.connect(f); f.connect(g); g.connect(this.mus); o.start(t); o.stop(t+1.05);
+      }
+      if(g16%4===2){
+        const n=ch[1+((s>>2)%3)];
+        const o=this.ctx.createOscillator(),g=this.ctx.createGain();
+        o.type='sine'; o.frequency.setValueAtTime(n*2,t);
+        g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.075,t+0.02);
+        g.gain.exponentialRampToValueAtTime(0.001,t+0.5);
+        o.connect(g); g.connect(this.mus); o.start(t); o.stop(t+0.52);
+      }
+      if(g16===0){
+        ch.slice(1).forEach(n=>{
+          const o=this.ctx.createOscillator(),g=this.ctx.createGain();
+          o.type='sine'; o.frequency.setValueAtTime(n,t);
+          g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.04,t+0.35);
+          g.gain.linearRampToValueAtTime(0,t+2.6);
+          o.connect(g); g.connect(this.mus); o.start(t); o.stop(t+2.65);
+        });
+      }
+      this.nextT+=SPB; this.step++;
+    }
+  }
+};
+
+/* ══════════════ DATA ══════════════ */
+const DEF={best:0,coins:0,sound:true,taught:false,gardens:0,totalMerges:0,totalOrders:0,bestTier:0,run:null};
+let D=Object.assign({},DEF);
+let saveTimer=null;
+function saveSoon(){ clearTimeout(saveTimer); saveTimer=setTimeout(()=>PF.set('mgb', JSON.stringify(D)),400); }
+/* the whole plot is part of progress: reloading must hand back the same garden */
+function saveRun(){
+  if(!G||G.over||G.tut.on){ return; }
+  D.run={ grid:G.grid.map(c=>c?c.t:null), energy:G.energy, coins:G.coins, seen:G.seen,
+          merges:G.merges, orders:G.orders, bestTier:G.bestTier,
+          orderList:G.orderList.map(o=>({t:o.t,pay:o.pay})), revived:!!G.revived };
+  saveSoon();
+}
+function clearRun(){ D.run=null; saveSoon(); }
+function restoreRun(r){
+  newGarden(false);
+  G.grid=r.grid.map(t=>t===null||t===undefined?null:{t});
+  G.energy=Math.max(0,Math.min(MAXE, r.energy|0));
+  G.coins=r.coins|0; G.seen=r.seen|0;
+  G.merges=r.merges|0; G.orders=r.orders|0; G.bestTier=r.bestTier|0;
+  G.revived=!!r.revived;
+  if(Array.isArray(r.orderList)&&r.orderList.length===3) G.orderList=r.orderList.map(o=>({t:o.t,pay:o.pay}));
+}
+
+/* ══════════════ GAME STATE ══════════════ */
+const COLS=5,ROWS=5,SIZE=25, MAXE=30, EMS=2600, START_E=22;
+let G=null;
+function newGarden(tut){
+  G={ grid:new Array(SIZE).fill(null), energy:START_E, coins:0, seen:0,
+      merges:0, orders:0, bestTier:0,
+      sel:-1, busy:false, over:false, paused:false, revived:false,
+      tut:{on:!!tut,step:0,done:!tut,armed:false},
+      orderList:[], eAcc:0, adHold:0, pops:[], t:0 };
+  for(let i=0;i<3;i++) G.orderList.push(makeOrder());
+  if(tut){ G.grid[12]={t:0}; G.grid[7]={t:0}; }
+  else { G.grid[12]={t:0}; G.grid[7]={t:0}; G.grid[17]={t:1}; G.seen=1; }
+}
+function makeOrder(){
+  const top=Math.max(1,Math.min((G?G.seen:1)+1,MAXT));
+  const low=Math.max(1,top-2);
+  const t=low+Math.floor(Math.random()*(top-low+1));
+  return {t,pay:Math.round(TIERS[t].pay*(1.5+Math.random()*0.5))};
+}
+
+/* ══════════════ DOM ══════════════ */
+const boot=document.getElementById('boot');
+const btnSound=document.getElementById('btnSound');
+const btnSkip=document.getElementById('btnSkip');
+const btnMenuBtn=document.getElementById('btnMenuBtn');
+const SCREENS=['scMenu','scFull'];
+function show(id){ SCREENS.forEach(s=>document.getElementById(s).classList.toggle('on',s===id)); }
+function hideAll(){ SCREENS.forEach(s=>document.getElementById(s).classList.remove('on')); }
+
+/* ══════════════ LAYOUT ══════════════ */
+let BX=0,BY=0,BW=0,CS=0,GAP=8;
+const BTN={x:0,y:0,w:0,h:0};
+const ADBTN={x:146,y:79,w:92,h:28};   // always on screen when energy < max
+function layout(){
+  const pad=16;
+  BW=Math.min(SW-pad*2, 372);
+  BX=(SW-BW)/2; BY=150;
+  CS=(BW-GAP*4-22)/5;
+  BTN.w=190; BTN.h=58; BTN.x=(SW-BTN.w)/2; BTN.y=BY+BW+34;
+}
+layout();
+const cellRect=i=>{
+  const c=i%5,r=(i/5)|0;
+  return {x:BX+11+c*(CS+GAP), y:BY+11+r*(CS+GAP), w:CS, h:CS};
+};
+const orderRect=i=>({x:22+i*((SW-44-16)/3+8), y:BY+BW+108, w:(SW-44-16)/3, h:62});
+
+/* ══════════════ INPUT ══════════════ */
+let drag=null;
+function ptIn(r,x,y){ return x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h; }
+function toStage(e){
+  const r=cv.getBoundingClientRect();
+  return {x:(e.clientX-r.left)*(SW/r.width), y:(e.clientY-r.top)*(SH/r.height)};
+}
+cv.addEventListener('pointerdown',e=>{
+  if(!G||G.over||G.paused)return;
+  AU.init(); AU.resume();
+  const p=toStage(e);
+  if(G.energy<MAXE && PF.hasRewarded() && ptIn(ADBTN,p.x,p.y)){ watchForEnergy(); return; }
+  if(ptIn(BTN,p.x,p.y)){ plant(); return; }
+  for(let i=0;i<SIZE;i++){
+    if(G.grid[i]&&ptIn(cellRect(i),p.x,p.y)){
+      drag={from:i,x:p.x,y:p.y,moved:false};
+      cv.setPointerCapture(e.pointerId);
+      return;
+    }
+  }
+});
+cv.addEventListener('pointermove',e=>{
+  if(!drag)return;
+  const p=toStage(e); drag.x=p.x; drag.y=p.y; drag.moved=true;
+});
+cv.addEventListener('pointerup',e=>{
+  if(!drag)return;
+  const d=drag; drag=null;
+  const p=toStage(e);
+  for(let i=0;i<SIZE;i++){
+    if(i!==d.from&&ptIn(cellRect(i),p.x,p.y)){ dropOn(d.from,i); return; }
+  }
+  for(let i=0;i<3;i++){
+    if(G.orderList[i]&&ptIn(orderRect(i),p.x,p.y)){ deliver(d.from,i); return; }
+  }
+});
+cv.addEventListener('pointercancel',()=>{drag=null;});
+
+/* ══════════════ ACTIONS ══════════════ */
+let adBusy=false;
+/* out of energy is the moment the player actually WANTS an ad — the highest
+   paying format offered exactly where it helps them */
+function watchForEnergy(){
+  if(adBusy||!G||G.over) return;
+  adBusy=true; G.adHold=0; G.eAcc=0;
+  AU.play('ui');
+  pop(BTN.x+BTN.w/2, BTN.y-10, 'Loading ad…', '#7C8B72', 14);
+  PF.rewarded('energy').then(ok=>{
+    adBusy=false;
+    if(ok){
+      G.energy=Math.min(MAXE, G.energy+15);
+      pop(BTN.x+BTN.w/2, BTN.y-10, '+15 energy!', '#548E46', 18);
+      AU.play('newtier');
+    } else {
+      /* say it plainly: nothing was given */
+      G.adHold=5;
+      pop(SW/2, BY-24, 'NO REWARD — AD CLOSED EARLY', '#C0392B', 15);
+      pop(BTN.x+BTN.w/2, BTN.y-10, 'Energy unchanged', '#C96A4A', 13);
+    }
+  }).catch(()=>{ adBusy=false; });
+}
+function plant(){
+  if(G.energy<=0){ watchForEnergy(); return; }
+  const open=[]; for(let i=0;i<SIZE;i++) if(!G.grid[i]) open.push(i);
+  if(!open.length){ AU.play('nope'); pop(BTN.x+BTN.w/2,BTN.y-8,'No space','#C96A4A',15); return; }
+  const s=open[Math.floor(Math.random()*open.length)];
+  G.energy--; G.grid[s]={t:0,anim:0};
+  AU.play('plant');
+  saveRun();
+  if(G.tut.on&&G.tut.step===0){ G.tut.step=1; G.tut.armed=false; }
+  checkFull();
+}
+function dropOn(a,b){
+  const A=G.grid[a],B=G.grid[b];
+  if(!A)return;
+  if(B&&B.t===A.t&&A.t<MAXT){
+    G.grid[a]=null; G.grid[b]={t:A.t+1,anim:1};
+    G.merges++; D.totalMerges++;
+    AU.play('merge');
+    pop(cellRect(b).x+CS/2, cellRect(b).y, TIERS[A.t+1].name, '#548E46', 15);
+    if(A.t+1>G.seen){
+      G.seen=A.t+1;
+      if(A.t+1>D.bestTier){ D.bestTier=A.t+1; }
+      if(A.t+1>G.bestTier) G.bestTier=A.t+1;
+      AU.play('newtier');
+      pop(SW/2, BY-16, 'NEW PLANT: '+TIERS[A.t+1].name, '#C9912A', 16);
+      pruneOrders();
+    }
+    if(A.t+1>G.bestTier) G.bestTier=A.t+1;
+    if(G.tut.on&&G.tut.step===1){ G.tut.step=2; G.tut.armed=false; }
+    saveRun();
+  } else {
+    G.grid[b]=A; G.grid[a]=B||null; saveRun();
+  }
+  checkFull();
+}
+function deliver(from,oi){
+  const o=G.orderList[oi], it=G.grid[from];
+  if(!o||!it||it.t!==o.t){ AU.play('nope'); return; }
+  G.coins+=o.pay; D.coins+=o.pay; G.orders++; D.totalOrders++;
+  if(G.coins>D.best) D.best=G.coins;
+  G.grid[from]=null;
+  const r=orderRect(oi);
+  pop(r.x+r.w/2, r.y, '+'+o.pay, '#C9912A', 18);
+  AU.play('deliver');
+  G.orderList[oi]=makeOrder();
+  if(G.tut.on&&G.tut.step===2){ finishTut(); }
+  saveRun();
+  checkFull();
+}
+function pruneOrders(){
+  const floor=Math.max(1,G.seen-2);
+  for(let i=0;i<3;i++) if(G.orderList[i].t<floor) G.orderList[i]=makeOrder();
+}
+function pop(x,y,txt,c,s){ G.pops.push({x,y,txt,c,s:s||15,t:0}); }
+
+function canMerge(){
+  for(let i=0;i<SIZE;i++){
+    const a=G.grid[i]; if(!a||a.t>=MAXT) continue;
+    for(let j=i+1;j<SIZE;j++){ const b=G.grid[j]; if(b&&b.t===a.t) return true; }
+  }
+  return false;
+}
+function canDeliver(){
+  return G.grid.some(c=>c&&G.orderList.some(o=>o&&o.t===c.t));
+}
+function checkFull(){
+  if(G.over||G.tut.on)return;
+  if(G.grid.every(c=>c)&&!canMerge()&&!canDeliver()) endGarden();
+}
+function endGarden(){
+  G.over=true;
+  D.gardens++; D.run=null; PF.set('mgb',JSON.stringify(D));
+  AU.play('full');
+  document.getElementById('fCoins').textContent=G.coins.toLocaleString('en-US');
+  document.getElementById('fMerges').textContent=G.merges;
+  document.getElementById('fOrders').textContent=G.orders;
+  document.getElementById('fBest').innerHTML=
+    '<div class="ic">'+TIERS[G.bestTier].art+'</div><div>'+TIERS[G.bestTier].name+'</div>';
+  /* offer the continue only once per garden, so it stays a real choice */
+  document.getElementById('btnRevive').classList.toggle('hide', G.revived===true || !PF.hasRewarded());
+  show('scFull');
+  btnMenuBtn.classList.add('hide');
+  PF.interstitial('garden_full');   // a natural pause, exactly where the portals want it
+}
+function reviveGarden(){
+  if(adBusy||!G) return;
+  adBusy=true;
+  const btn=document.getElementById('btnRevive');
+  btn.textContent='LOADING…'; btn.disabled=true;
+  PF.rewarded('continue').then(ok=>{
+    adBusy=false;
+    btn.textContent='▶ WATCH AD — CLEAR 3 PLANTS'; btn.disabled=false;
+    if(!ok){ btn.textContent='Ad not finished — no reward'; return; }
+    /* clear the three least valuable plants and hand the garden back */
+    const idx=G.grid.map((c,i)=>({i,t:c?c.t:99})).sort((a,b)=>a.t-b.t).slice(0,3);
+    idx.forEach(o=>{ G.grid[o.i]=null; });
+    G.energy=Math.min(MAXE,G.energy+10);
+    G.over=false; G.revived=true; G.fAcc=-2;   // brief grace before the next check
+    saveRun();
+    hideAll();
+    btnMenuBtn.classList.remove('hide');
+    AU.startMusic(); AU.play('newtier');
+    pop(SW/2, BY+BW/2, 'Room to grow again!', '#548E46', 18);
+  }).catch(()=>{ adBusy=false; btn.disabled=false; });
+}
+
+/* ══════════════ TUTORIAL ══════════════ */
+const TUT=[
+  {txt:'TAP TO PLANT A SEED'},
+  {txt:'DRAG ONE SEED ONTO THE OTHER'},
+  {txt:'DRAG A PLANT ONTO ITS ORDER'}
+];
+function finishTut(){
+  G.tut.on=false; G.tut.done=true;
+  D.taught=true; saveSoon();
+  btnSkip.classList.add('hide');
+  pop(SW/2, BY+BW/2, 'Your garden is yours now', '#548E46', 18);
+  AU.play('newtier');
+}
+function skipTut(){
+  if(!G||!G.tut.on)return;
+  G.tut.on=false; G.tut.done=true; D.taught=true; saveSoon();
+  btnSkip.classList.add('hide'); AU.play('ui');
+}
+/* make sure the tutorial can always be completed */
+function tutMaintain(){
+  const T=G.tut; if(!T.on)return;
+  if(T.step===1){
+    const seeds=G.grid.filter(c=>c&&c.t===0).length;
+    if(seeds<2){ const open=G.grid.findIndex(c=>!c); if(open>=0) G.grid[open]={t:0,anim:0}; }
+  }
+  if(T.step===2 && !T.armed){
+    /* guarantee one order matches something on the board */
+    const have=G.grid.filter(Boolean).map(c=>c.t).sort((a,b)=>b-a)[0];
+    if(have!==undefined){ G.orderList[0]={t:have,pay:Math.round(TIERS[have].pay*1.8)}; T.armed=true; }
+  }
+}
+
+/* ══════════════ UPDATE ══════════════ */
+function update(dt){
+  if(!G||G.paused)return;
+  G.t+=dt;
+  if(!G.over){
+    /* regen is frozen while an ad is on screen and for a moment after a
+       refused reward — otherwise the counter ticking up right after an early
+       ad close looks exactly like a reward that should not have been given. */
+    if(G.adHold>0){ G.adHold-=dt; G.eAcc=0; }
+    else if(adBusy){ G.eAcc=0; }
+    else {
+      G.eAcc+=dt*1000;
+      while(G.eAcc>=EMS){ G.eAcc-=EMS; if(G.energy<MAXE) G.energy++; }
+    }
+    tutMaintain();
+    /* watch for the dead end continuously. Checking only inside plant() meant a
+       full board silently refused every tap with no end screen. */
+    G.fAcc=(G.fAcc||0)+dt;
+    if(G.fAcc>=0.25){ G.fAcc=0; checkFull(); }
+  }
+  for(let i=G.pops.length-1;i>=0;i--){ G.pops[i].t+=dt; if(G.pops[i].t>1.1) G.pops.splice(i,1); }
+  for(let i=0;i<SIZE;i++){ const c=G.grid[i]; if(c&&c.anim>0) c.anim=Math.max(0,c.anim-dt*3); }
+}
+
+/* ══════════════ DRAW ══════════════ */
+function rr(x,y,w,h,r){cx.beginPath();cx.roundRect(x,y,w,h,r);}
+const svgCache={};
+function drawSVG(art,x,y,w,h){
+  let img=svgCache[art];
+  if(!img){
+    img=new Image();
+    img.src='data:image/svg+xml;utf8,'+encodeURIComponent(art);
+    svgCache[art]=img;
+  }
+  if(img.complete&&img.naturalWidth) cx.drawImage(img,x,y,w,h);
+}
+function draw(){
+  cx.clearRect(0,0,SW,SH);
+  const g=cx.createLinearGradient(0,0,0,SH);
+  g.addColorStop(0,'#F5FAF0'); g.addColorStop(1,'#DDEBD3');
+  cx.fillStyle=g; cx.fillRect(0,0,SW,SH);
+  if(!G) return;
+
+  /* header */
+  cx.textAlign='left'; cx.font='800 '+(19*1).toFixed(0)+'px "Segoe UI",sans-serif';
+  cx.fillStyle='#33422F'; cx.fillText('Merge Garden Bloom',18,66);
+
+  /* energy + coins */
+  const eW=118, eX=18, eY=80;
+  cx.fillStyle='#fff'; rr(eX,eY,eW,26,13); cx.fill();
+  cx.fillStyle='#DCEFD3'; rr(eX,eY,eW*(G.energy/MAXE),26,13); cx.fill();
+  cx.strokeStyle='#DCE7D5'; cx.lineWidth=1.5; rr(eX,eY,eW,26,13); cx.stroke();
+  cx.fillStyle='#33422F'; cx.font='800 13px "Segoe UI",sans-serif';
+  cx.fillText('⚡ '+G.energy+'/'+MAXE, eX+11, eY+18);
+
+  /* the rewarded offer must be findable at any time, not only at zero energy */
+  if(G.energy<MAXE && PF.hasRewarded()){
+    const pulse=(Math.sin(G.t*3)+1)/2;
+    cx.fillStyle='#8A6A1E'; rr(ADBTN.x,ADBTN.y+2,ADBTN.w,ADBTN.h,999); cx.fill();
+    const ag=cx.createLinearGradient(0,ADBTN.y,0,ADBTN.y+ADBTN.h);
+    ag.addColorStop(0,'#F5CE62'); ag.addColorStop(1,'#D89E2E');
+    cx.fillStyle=adBusy?'#C6CFC0':ag; rr(ADBTN.x,ADBTN.y,ADBTN.w,ADBTN.h,999); cx.fill();
+    if(!adBusy){
+      cx.strokeStyle='rgba(255,255,255,'+(0.25+pulse*0.5)+')'; cx.lineWidth=2;
+      rr(ADBTN.x,ADBTN.y,ADBTN.w,ADBTN.h,999); cx.stroke();
+    }
+    cx.fillStyle='#fff'; cx.textAlign='center'; cx.font='800 12px "Segoe UI",sans-serif';
+    cx.fillText(adBusy?'…':'▶ +15 ⚡', ADBTN.x+ADBTN.w/2, ADBTN.y+18);
+  }
+
+  cx.textAlign='right'; cx.font='800 17px "Segoe UI",sans-serif';
+  cx.fillStyle='#C9912A'; cx.fillText('🪙 '+G.coins.toLocaleString('en-US'), SW-18, eY+19);
+
+  /* board */
+  cx.fillStyle='#fff'; rr(BX,BY,BW,BW,22); cx.fill();
+  cx.strokeStyle='#DCE7D5'; cx.lineWidth=1.5; rr(BX,BY,BW,BW,22); cx.stroke();
+  for(let i=0;i<SIZE;i++){
+    const r=cellRect(i);
+    cx.fillStyle='#FAFDF7'; rr(r.x,r.y,r.w,r.h,13); cx.fill();
+    cx.strokeStyle='#E6EFE0'; cx.lineWidth=1.4; rr(r.x,r.y,r.w,r.h,13); cx.stroke();
+    const c=G.grid[i];
+    if(c && !(drag&&drag.from===i&&drag.moved)){
+      const k=1+(c.anim||0)*0.25, s=r.w*0.80*k;
+      drawSVG(TIERS[c.t].art, r.x+(r.w-s)/2, r.y+(r.h-s)/2, s, s);
+    }
+  }
+
+  /* plant button */
+  const pressed=false;
+  const outOfEnergy = G.energy<=0;
+  cx.fillStyle=outOfEnergy?'#8A6A1E':'#3F6F34'; rr(BTN.x,BTN.y+5,BTN.w,BTN.h,999); cx.fill();
+  const bg=cx.createLinearGradient(0,BTN.y,0,BTN.y+BTN.h);
+  if(outOfEnergy){ bg.addColorStop(0,'#F0C24E'); bg.addColorStop(1,'#C9912A'); }
+  else { bg.addColorStop(0,'#7CC167'); bg.addColorStop(1,'#548E46'); }
+  cx.fillStyle=adBusy?'#C6CFC0':bg; rr(BTN.x,BTN.y,BTN.w,BTN.h,999); cx.fill();
+  cx.fillStyle='#fff'; cx.textAlign='center';
+  if(adBusy){
+    cx.font='800 16px "Segoe UI",sans-serif';
+    cx.fillText('LOADING…', BTN.x+BTN.w/2, BTN.y+BTN.h/2+6);
+  } else if(outOfEnergy){
+    cx.font='800 15px "Segoe UI",sans-serif';
+    cx.fillText('▶  WATCH AD', BTN.x+BTN.w/2, BTN.y+BTN.h/2-3);
+    cx.font='800 12px "Segoe UI",sans-serif';
+    cx.fillText('+15 ENERGY', BTN.x+BTN.w/2, BTN.y+BTN.h/2+15);
+  } else {
+    cx.font='800 20px "Segoe UI",sans-serif';
+    cx.fillText('PLANT  🌱', BTN.x+BTN.w/2, BTN.y+BTN.h/2+7);
+  }
+
+  /* orders */
+  cx.textAlign='left'; cx.font='800 '+(10*UIK).toFixed(1)+'px "Segoe UI",sans-serif';
+  cx.fillStyle='#8B9A82'; cx.fillText('ORDERS', 22, BY+BW+98);
+  for(let i=0;i<3;i++){
+    const o=G.orderList[i]; if(!o)continue;
+    const r=orderRect(i);
+    const hot=drag&&drag.moved&&G.grid[drag.from]&&G.grid[drag.from].t===o.t;
+    cx.fillStyle=hot?'#EAF6E3':'#fff'; rr(r.x,r.y,r.w,r.h,14); cx.fill();
+    cx.strokeStyle=hot?'#6FAE5F':'#DCE7D5'; cx.lineWidth=hot?2.4:1.5; rr(r.x,r.y,r.w,r.h,14); cx.stroke();
+    drawSVG(TIERS[o.t].art, r.x+7, r.y+8, 34, 34);
+    cx.fillStyle='#C9912A'; cx.font='800 '+(13*UIK).toFixed(1)+'px "Segoe UI",sans-serif'; cx.textAlign='left';
+    cx.fillText('🪙'+o.pay, r.x+46, r.y+29);
+  }
+
+  /* pops */
+  G.pops.forEach(p=>{
+    cx.globalAlpha=Math.max(0,1-p.t/1.1);
+    cx.textAlign='center'; cx.font='800 '+p.s+'px "Segoe UI",sans-serif';
+    cx.lineWidth=3.5; cx.strokeStyle='rgba(255,255,255,.9)';
+    cx.strokeText(p.txt,p.x,p.y-p.t*34);
+    cx.fillStyle=p.c; cx.fillText(p.txt,p.x,p.y-p.t*34);
+  });
+  cx.globalAlpha=1;
+
+  if(G.tut.on) drawTut();
+
+  /* dragged plant on top */
+  if(drag&&drag.moved&&G.grid[drag.from]){
+    const s=CS*0.95;
+    cx.save(); cx.globalAlpha=.95;
+    drawSVG(TIERS[G.grid[drag.from].t].art, drag.x-s/2, drag.y-s/2, s, s);
+    cx.restore();
+  }
+}
+
+function drawTut(){
+  const T=G.tut, pulse=(Math.sin(G.t*4)+1)/2;
+  cx.fillStyle='rgba(51,66,47,.86)';
+  const bw=300,bh=34,bx=(SW-bw)/2,by=BY-40;
+  rr(bx,by,bw,bh,999); cx.fill();
+  cx.fillStyle='#fff'; cx.textAlign='center';
+  cx.font='800 '+(13.5*UIK).toFixed(1)+'px "Segoe UI",sans-serif';
+  cx.fillText(TUT[T.step].txt, SW/2, by+22);
+
+  for(let i=0;i<TUT.length;i++){
+    cx.beginPath(); cx.arc(SW/2+(i-1)*15, by+bh+11, 4, 0, 7);
+    cx.fillStyle = i<T.step?'#7CC167':(i===T.step?'#33422F':'#C6D3BE'); cx.fill();
+  }
+
+  if(T.step===0){
+    cx.strokeStyle='rgba(124,193,103,'+(0.45+pulse*0.5)+')'; cx.lineWidth=4;
+    rr(BTN.x-7,BTN.y-7,BTN.w+14,BTN.h+14,999); cx.stroke();
+    hand(BTN.x+BTN.w/2, BTN.y+BTN.h+16+pulse*5, pulse);
+  }
+  if(T.step===1){
+    const seeds=[]; for(let i=0;i<SIZE;i++) if(G.grid[i]&&G.grid[i].t===0) seeds.push(i);
+    if(seeds.length>=2){
+      const a=cellRect(seeds[0]), b=cellRect(seeds[1]);
+      cx.strokeStyle='rgba(124,193,103,'+(0.45+pulse*0.5)+')'; cx.lineWidth=4;
+      rr(a.x-4,a.y-4,a.w+8,a.h+8,15); cx.stroke();
+      rr(b.x-4,b.y-4,b.w+8,b.h+8,15); cx.stroke();
+      cx.setLineDash([7,8]); cx.lineWidth=3;
+      cx.beginPath(); cx.moveTo(a.x+a.w/2,a.y+a.h/2); cx.lineTo(b.x+b.w/2,b.y+b.h/2); cx.stroke();
+      cx.setLineDash([]);
+      const hx=a.x+a.w/2+(b.x-a.x)*pulse, hy=a.y+a.h/2+(b.y-a.y)*pulse;
+      hand(hx,hy,pulse);
+    }
+  }
+  if(T.step===2){
+    const o=G.orderList[0];
+    const src=G.grid.findIndex(c=>c&&o&&c.t===o.t);
+    if(src>=0){
+      const a=cellRect(src), r=orderRect(0);
+      cx.strokeStyle='rgba(124,193,103,'+(0.45+pulse*0.5)+')'; cx.lineWidth=4;
+      rr(a.x-4,a.y-4,a.w+8,a.h+8,15); cx.stroke();
+      rr(r.x-4,r.y-4,r.w+8,r.h+8,16); cx.stroke();
+      cx.setLineDash([7,8]); cx.lineWidth=3;
+      cx.beginPath(); cx.moveTo(a.x+a.w/2,a.y+a.h/2); cx.lineTo(r.x+r.w/2,r.y+r.h/2); cx.stroke();
+      cx.setLineDash([]);
+      hand(a.x+a.w/2+(r.x+r.w/2-a.x-a.w/2)*pulse, a.y+a.h/2+(r.y+r.h/2-a.y-a.h/2)*pulse, pulse);
+    }
+  }
+}
+function hand(x,y,p){
+  cx.save(); cx.translate(x,y);
+  /* expanding tap ripple */
+  cx.globalAlpha=(1-p)*0.5;
+  cx.strokeStyle='#548E46'; cx.lineWidth=3;
+  cx.beginPath(); cx.arc(0,0,9+p*15,0,7); cx.stroke();
+  /* fingertip */
+  cx.globalAlpha=1;
+  cx.fillStyle='rgba(51,66,47,.30)'; cx.beginPath(); cx.arc(0,3,11,0,7); cx.fill();
+  cx.fillStyle='#FFFFFF'; cx.beginPath(); cx.arc(0,0,10,0,7); cx.fill();
+  cx.strokeStyle='#548E46'; cx.lineWidth=2.5;
+  cx.beginPath(); cx.arc(0,0,10,0,7); cx.stroke();
+  cx.fillStyle='#548E46'; cx.beginPath(); cx.arc(0,0,3.4,0,7); cx.fill();
+  cx.restore(); cx.globalAlpha=1;
+}
+
+/* ══════════════ SCREENS ══════════════ */
+function renderMenu(){
+  const resuming = !!(D.run && D.taught);
+  document.getElementById('btnPlay').textContent = resuming ? 'CONTINUE GARDEN' : 'PLANT';
+  document.getElementById('mBest').textContent=D.best.toLocaleString('en-US');
+  document.getElementById('mCoins').textContent=D.coins.toLocaleString('en-US');
+  const host=document.getElementById('mStats');
+  host.innerHTML=
+    (resuming ? '<div class="row"><div class="ic">'+TIERS[Math.max(1,D.run.bestTier)].art+'</div><div>Garden in progress — <b>'+D.run.coins.toLocaleString('en-US')+' coins</b></div></div>' : '')+
+    '<div class="row"><div class="ic">'+TIERS[D.bestTier].art+'</div><div>Best plant: <b>'+TIERS[D.bestTier].name+'</b></div></div>'+
+    '<div class="row"><div class="ic">'+COIN+'</div><div>'+D.totalOrders.toLocaleString('en-US')+' orders delivered</div></div>'+
+    '<div class="row"><div class="ic">'+TIERS[1].art+'</div><div>'+D.totalMerges.toLocaleString('en-US')+' merges · '+D.gardens+' gardens</div></div>';
+}
+function startGame(){
+  AU.init(); AU.resume();
+  if(D.run && D.taught){ restoreRun(D.run); }
+  else { newGarden(!D.taught); clearRun(); }
+  hideAll();
+  btnMenuBtn.classList.remove('hide');
+  btnSkip.classList.toggle('hide', D.taught);
+  AU.startMusic();
+}
+function toMenu(){
+  const wasPlaying=!!G;
+  G=null; renderMenu(); show('scMenu');
+  btnMenuBtn.classList.add('hide'); btnSkip.classList.add('hide');
+  AU.stopMusic();
+  if(wasPlaying) PF.interstitial('menu_return');
+}
+const on=(id,fn)=>document.getElementById(id).addEventListener('click',e=>{
+  e.stopPropagation(); AU.init(); AU.resume(); AU.play('ui'); fn();
+});
+on('btnPlay',startGame);
+on('btnNew',()=>{ clearRun(); newGarden(false); hideAll();
+  btnMenuBtn.classList.remove('hide'); btnSkip.classList.add('hide'); AU.startMusic(); });
+on('btnRevive',reviveGarden);
+on('btnToMenu',toMenu);
+on('btnMenuBtn',toMenu);
+on('btnSkip',skipTut);
+btnSound.addEventListener('click',e=>{
+  e.stopPropagation(); AU.init(); AU.resume();
+  const v=!D.sound; AU.setOn(v);
+  btnSound.textContent=v?'♪':'✕';
+  btnSound.setAttribute('aria-label', v?'Sound on':'Sound off');
+  if(v&&G&&!G.over) AU.startMusic(); else AU.stopMusic();
+  AU.play('ui');
+});
+
+/* ══════════════ LOOP ══════════════ */
+let last=0,acc=0; const STEP=1/60;
+function frame(ts){
+  if(!last)last=ts;
+  let dt=(ts-last)/1000; last=ts;
+  dt=Math.min(dt,0.25);
+  acc+=dt; let n=0;
+  while(acc>=STEP&&n<20){ update(STEP); acc-=STEP; n++; }
+  if(n>=20) acc=0;
+  draw();
+  requestAnimationFrame(frame);
+}
+
+/* ══════════════ BOOT ══════════════ */
+(async function boot0(){
+  try{ await PF.init(); }catch(e){}
+  try{
+    const raw=await PF.get('mgb');
+    if(raw) D=Object.assign({},DEF,JSON.parse(raw));
+  }catch(e){}
+
+  btnSound.textContent=D.sound?'♪':'✕';
+  AU.init();
+  AU.setAllowed(PF.audioAllowed());
+
+  PF.onPause(p=>{
+    if(p && G && !G.over) { saveRun(); PF.set('mgb', JSON.stringify(D)); }
+    if(G) G.paused=p;
+    AU.setAllowed(!p && PF.audioAllowed());
+    if(!p && D.sound && G && !G.over) AU.startMusic();
+  });
+  PF.onAudio(v=>{ AU.setAllowed(v); if(v&&D.sound&&G&&!G.over) AU.startMusic(); });
+
+  boot.style.display='none';
+  renderMenu(); show('scMenu');
+  fit();
+  requestAnimationFrame(frame);
+  PF.ready();
+})();
+
+/* test hooks */
+window.__G=()=>G; window.__D=()=>D; window.__PF=()=>PF;
+window.__start=startGame; window.__plant=plant;
+window.__drop=(a,b)=>dropOn(a,b); window.__deliver=(f,o)=>deliver(f,o);
+window.__cell=cellRect; window.__order=orderRect; window.__btn=()=>BTN;
+window.__skipTut=skipTut; window.__tiers=TIERS.length;
+window.__saveRun=saveRun;
+window.__adbtn=()=>ADBTN;
+window.__watchAd=watchForEnergy;
+})();
+</script>
+</body>
+</html>

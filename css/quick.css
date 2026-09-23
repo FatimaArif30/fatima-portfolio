@@ -1,0 +1,32 @@
+/* Quick view — a clean mission brief for recruiters and slow devices */
+.wrap { width: 100%; max-width: 1040px; margin-inline: auto; padding-inline: var(--gutter); }
+.skip { position: absolute; left: -999px; top: 8px; background: var(--red); color: #fff; padding: 8px 12px; z-index: 10; }
+.skip:focus { left: 8px; }
+
+.masthead { border-bottom: 1px solid var(--line); background:
+  radial-gradient(1200px 400px at 80% -20%, rgba(61, 123, 255, 0.18), transparent 60%),
+  linear-gradient(to bottom, #07101f, var(--void)); }
+.mast-grid { display: grid; grid-template-columns: auto 1fr auto; gap: 24px; align-items: center; padding-block: clamp(28px, 6vw, 56px) 20px; }
+.patch { width: clamp(84px, 14vw, 128px); height: auto; filter: drop-shadow(0 6px 24px rgba(252, 61, 33, 0.25)); }
+.mast-text h1 { margin: 4px 0 2px; font-family: var(--display); font-weight: 700; font-size: clamp(34px, 6.4vw, 60px); line-height: 1; letter-spacing: 0.01em; text-wrap: balance; }
+.mast-text .role { margin: 0; font-family: var(--display); font-weight: 600; font-size: clamp(17px, 2.4vw, 22px); color: var(--cyan); }
+.mast-text .meta { margin: 6px 0 0; font-family: var(--mono); font-size: 13px; color: var(--ink-dim); letter-spacing: 0.02em; }
+.mast-cta { display: grid; gap: 6px; justify-items: end; }
+.mast-cta .hint { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); letter-spacing: 0.06em; }
+@media (max-width: 760px) {
+  .mast-grid { grid-template-columns: auto 1fr; }
+  .mast-cta { grid-column: 1 / -1; justify-items: start; }
+}
+
+.qnav { display: flex; gap: 4px; overflow-x: auto; padding-block: 8px 12px; scrollbar-width: none; position: sticky; top: 0; }
+.qnav::-webkit-scrollbar { display: none; }
+.qnav a { flex: none; font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); text-decoration: none; padding: 7px 10px; border: 1px solid transparent; border-radius: 3px; }
+.qnav a:hover { color: #fff; border-color: var(--line-strong); }
+
+.block { padding-block: clamp(32px, 6vw, 56px) 8px; scroll-margin-top: 12px; }
+.block h2 { display: flex; align-items: center; gap: 12px; margin: 0 0 18px; font-family: var(--display); font-weight: 700; font-size: clamp(24px, 3.4vw, 30px); letter-spacing: 0.02em; text-transform: uppercase; }
+.block h2::before { content: ""; width: 14px; height: 14px; border-radius: 50%; border: 3px solid var(--red); flex: none; }
+#about [data-slot] > p { max-width: 68ch; margin: 0 0 12px; color: var(--ink-2); font-size: 17px; }
+#about [data-slot] > p:first-of-type { color: var(--ink); font-size: 19px; }
+
+.foot { padding-block: 48px 40px; color: var(--ink-dim); font-size: 14px; border-top: 1px solid var(--line); margin-top: 48px; }

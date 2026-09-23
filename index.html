@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Fatima Arif · Mission Control</title>
+  <meta name="description" content="Fatima Arif — AI Systems Builder from Karachi. Explore her portfolio as a NASA-style mission control room: projects, skills, experience and a Lunar Lander game.">
+  <meta property="og:title" content="Fatima Arif · Mission Control">
+  <meta property="og:description" content="An explorable 3D mission control room: AI systems, projects, and a Lunar Lander you can play.">
+  <meta property="og:image" content="/assets/og.png">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#03050a">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/content.css">
+  <link rel="stylesheet" href="/css/app.css">
+  <script type="importmap">
+  { "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  } }
+  </script>
+  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js" crossorigin>
+</head>
+<body>
+  <canvas id="scene" aria-hidden="true"></canvas>
+  <div id="hotspots" aria-hidden="false"></div>
+
+  <header class="topbar" id="topbar" hidden>
+    <a class="brand" href="/" aria-label="Fatima Arif, Mission Control home">
+      <img src="/assets/favicon.svg" alt="" width="28" height="28">
+      <span><strong>Fatima Arif</strong><em>FA-01 Mission Control</em></span>
+    </a>
+    <div class="iss" id="iss-readout" title="Live position of the International Space Station">
+      <span class="iss-dot" aria-hidden="true"></span>
+      <span id="iss-text">ISS · acquiring signal…</span>
+    </div>
+    <div class="top-actions">
+      <button type="button" class="tbtn" id="btn-sound" aria-pressed="false">Sound off</button>
+      <a class="tbtn" href="/quick">Quick view</a>
+    </div>
+  </header>
+
+  <nav class="stations" id="stations" aria-label="Mission Control stations" hidden>
+    <button type="button" data-station="briefing">Briefing</button>
+    <button type="button" data-station="about">About</button>
+    <button type="button" data-station="projects">Projects</button>
+    <button type="button" data-station="skills">Skills</button>
+    <button type="button" data-station="experience">Experience</button>
+    <button type="button" data-station="simulator">Play</button>
+    <button type="button" data-station="contact" class="launch">Contact</button>
+  </nav>
+
+  <section class="boot" id="boot" aria-live="polite">
+    <div class="boot-inner">
+      <img class="boot-patch" src="/assets/patch.svg" alt="FA-01 mission patch" width="96" height="96">
+      <p class="eyebrow">FA-01 · Mission Control</p>
+      <h1>Fatima Arif</h1>
+      <p class="boot-role">AI Systems Builder · Karachi</p>
+      <ol class="boot-log" id="boot-log"></ol>
+      <div class="poll" id="poll" hidden></div>
+      <div class="boot-actions" id="boot-actions" hidden>
+        <button type="button" class="btn" id="btn-enter">Enter Mission Control</button>
+        <a class="btn ghost" href="/quick">Quick view</a>
+      </div>
+      <p class="boot-note" id="boot-note">Sound turns on when you enter. You can mute it any time.</p>
+    </div>
+  </section>
+
+  <div class="launch-hud" id="launch-hud" hidden>
+    <p id="launch-text">T-05</p>
+    <button type="button" class="tbtn" id="btn-skip">Skip</button>
+  </div>
+
+  <dialog class="panel" id="panel" aria-labelledby="panel-title">
+    <div class="panel-head">
+      <div>
+        <p class="eyebrow" id="panel-eyebrow">Station</p>
+        <h2 id="panel-title">Title</h2>
+      </div>
+      <button type="button" class="panel-close" id="panel-close" aria-label="Close and return to the room">✕</button>
+    </div>
+    <div class="panel-body" id="panel-body"></div>
+    <div class="panel-foot">
+      <button type="button" class="tbtn" id="panel-prev">← Prev</button>
+      <button type="button" class="tbtn" id="panel-next">Next station →</button>
+    </div>
+  </dialog>
+
+  <noscript><p class="nojs">This 3D portfolio needs JavaScript. <a href="/quick">Open the Quick view</a>.</p></noscript>
+  <script type="module" src="/js/app/main.js"></script>
+</body>
+</html>
