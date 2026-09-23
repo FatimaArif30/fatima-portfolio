@@ -7,5 +7,5 @@
   scores and adding scores through a checked function.
   While these are empty, the game still works with a personal best only.
 */
-export const SUPABASE_URL = '';
-export const SUPABASE_ANON_KEY = '';
+export const SUPABASE_URL = 'https://srvpdypxahczmbspnajj.supabase.co';
+export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNydnBkeXB4YWhjem1ic3BuYWpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxODE4ODUsImV4cCI6MjEwNTc1Nzg4NX0.xu4n8SctmyRwUCxLWZEodG8ociVlruy75s-Mj1J3-0o';

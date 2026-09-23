@@ -76,7 +76,7 @@ export async function createApp({ quality, reduced }) {
     renderer.setSize(W, H, false); composer.setSize(W, H);
     applyShift();
   }
-  addEventListener('resize', resize); resize();
+  addEventListener('resize', () => { resize(); hotspots && hotspots.forEach((h) => { h.w = 0; }); }); resize();
 
   /* ── hotspots (HTML buttons that follow the 3D stations) ── */
   const layer = $('hotspots');
@@ -99,7 +99,12 @@ export async function createApp({ quality, reduced }) {
       const off = tmp.z > 1 || tmp.x < -1.1 || tmp.x > 1.1 || tmp.y < -1.1 || tmp.y > 1.1;
       h.b.classList.toggle('gone', !show || off);
       h.b.tabIndex = show && !off ? 0 : -1;
-      if (!off) h.b.style.transform = `translate(${Math.round((tmp.x * 0.5 + 0.5) * W - 5)}px, ${Math.round((-tmp.y * 0.5 + 0.5) * H - 12)}px)`;
+      if (!off) {
+        if (!h.w) h.w = h.b.offsetWidth || 160;
+        const x = clamp((tmp.x * 0.5 + 0.5) * W - 5, 6, W - h.w - 6);
+        const y = clamp((-tmp.y * 0.5 + 0.5) * H - 12, 60, H - 110);
+        h.b.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+      }
       h.b.classList.toggle('hot', hovered === h.s);
     }
   }
@@ -173,6 +178,7 @@ export async function createApp({ quality, reduced }) {
     $('panel-next').textContent = i >= 0 && i < ORDER.length - 1 ? `${TITLES[ORDER[i + 1]][1]} →` : 'Next →';
     $('panel-prev').textContent = i > 0 ? `← ${TITLES[ORDER[i - 1]][1]}` : '← Prev';
     if (!panel.open) panel.showModal();
+    document.body.classList.add('panel-open');
     shiftTarget = 1; setNav(key); sound.open();
   }
 
@@ -193,12 +199,13 @@ export async function createApp({ quality, reduced }) {
     setTimeout(() => showPanel(key), reduced ? 0 : 350);
     await fly;
   }
-  function leavePanelFor(key) { suppressBack = true; panel.close(); current = null; shiftTarget = 0; openStation(key); }
+  function leavePanelFor(key) { suppressBack = true; panel.close(); document.body.classList.remove('panel-open'); current = null; shiftTarget = 0; openStation(key); }
   async function switchTo(key) {
     if (key === 'simulator' || key === 'contact') { leavePanelFor(key); return; }
     showPanel(key); rig.flyTo(stations[key].view, 1.3);
   }
   function backToRoom() {
+    document.body.classList.remove('panel-open');
     current = null; shiftTarget = 0; setNav(null);
     rig.setLimits({ yaw: 0.45, pitch: 0.16, zMin: 0.62, zMax: 1.15 });
     rig.flyTo(stations.overview.view, 1.4);

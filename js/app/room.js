@@ -34,15 +34,15 @@ export function buildRoom({ screens, settings, envMap }) {
     g.fillStyle = 'rgba(160,180,230,0.05)'; for (let i = 0; i < 8; i++) g.fillRect(i * w / 8 - 3, 0, 3, h);
   }, { wrap: true });
   wallTex.repeat.set(8, 1);
-  const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.8, metalness: 0.1 });
+  const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.85, metalness: 0.1, envMapIntensity: 0.08 });
   const back = new THREE.Mesh(new THREE.PlaneGeometry(80, 22), wallMat); back.position.set(0, 11, C.z - 0.6); scene.add(back);
   for (const s of [-1, 1]) { const side = new THREE.Mesh(new THREE.PlaneGeometry(60, 22), wallMat); side.position.set(s * 26, 11, 10); side.rotation.y = -s * Math.PI / 2; scene.add(side); }
-  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(80, 70), new THREE.MeshStandardMaterial({ color: 0x07090e, roughness: 1 }));
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(80, 70), new THREE.MeshStandardMaterial({ color: 0x07090e, roughness: 1, envMapIntensity: 0.04 }));
   ceil.rotation.x = Math.PI / 2; ceil.position.set(0, 16, 10); scene.add(ceil);
-  const stripMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 1.5, 1.3) });
+  const stripMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.15, 1.1, 1.0) });
   for (const R of [12, 18, 24]) {
     const tg = new THREE.TorusGeometry(R, 0.08, 6, 64, 1.3); tg.rotateZ(Math.PI / 2 - 0.65); tg.rotateX(Math.PI / 2);
-    const t = new THREE.Mesh(tg, stripMat); t.position.set(C.x, 15.8, C.z); scene.add(t);
+    const t = new THREE.Mesh(tg, stripMat); t.scale.set(1, 1, 0.6); t.position.set(C.x, 15.8, C.z); scene.add(t);
   }
   // NASA-style red wall stripe
   const stripe = new THREE.Mesh(new THREE.PlaneGeometry(80, 0.18), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 0.25, 0.15) }));
@@ -75,7 +75,7 @@ export function buildRoom({ screens, settings, envMap }) {
     const r = rng(3); const cols = ['#fc3d21', '#ffb547', '#5dff9b', '#3d7bff', '#e8ecf5', '#2a3140'];
     for (let y = 0; y < 3; y++) for (let x = 0; x < 16; x++) { g.fillStyle = cols[Math.floor(r() * cols.length)]; g.fillRect(12 + x * 31, 14 + y * 38, 22, 22); }
   }, { aniso: 2 });
-  const btnMat = new THREE.MeshStandardMaterial({ map: btnTex, emissiveMap: btnTex, emissive: 0xffffff, emissiveIntensity: 0.55, roughness: 0.5 });
+  const btnMat = new THREE.MeshStandardMaterial({ map: btnTex, emissiveMap: btnTex, emissive: 0xffffff, emissiveIntensity: 0.28, roughness: 0.5 });
   const monMats = screens.pool.map((t) => screenMat(t, 1.25));
   const logMats = [screenMat(screens.logTex, 1.3), screenMat(screens.eduTex, 1.3)];
   const seatMat = new THREE.MeshStandardMaterial({ color: 0x1b1f28, roughness: 0.85 });
@@ -184,7 +184,7 @@ export function buildRoom({ screens, settings, envMap }) {
   const holoLight = new THREE.PointLight(0x7fd8ff, 14, 12, 1.6); holoLight.position.set(0, 3.2, 0); holo.add(holoLight);
 
   /* ── lights ── */
-  const hemi = new THREE.HemisphereLight(0x6b86c9, 0x0a0c12, 0.55); scene.add(hemi);
+  const hemi = new THREE.HemisphereLight(0x6b86c9, 0x0a0c12, 0.38); scene.add(hemi);
   const scrLight = new THREE.PointLight(0x5aa0ff, 60, 40, 1.6); scrLight.position.set(0, 7, C.z + 5); scene.add(scrLight);
   const spots = [];
   [[-9, 0], [0, 4], [9, 0], [-12, 8], [12, 8], [0, 12]].forEach(([x, z], i) => {
