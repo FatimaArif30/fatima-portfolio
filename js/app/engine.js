@@ -189,7 +189,7 @@ export async function createApp({ quality, reduced }) {
     if (key === 'simulator') {
       current = 'simulator'; setNav(key);
       await rig.flyTo(s.view, 1.4);
-      openGame('/games/lander/index.html', 'Lunar Lander · FA-01 Simulator', $('stations').querySelector('[data-station="simulator"]'));
+      openGame('/games/lander', 'Lunar Lander · FA-01 Simulator', $('stations').querySelector('[data-station="simulator"]'));
       return;
     }
     if (key === 'contact') { current = 'contact'; setNav(key); await rig.flyTo(s.view, 1.3); runLaunch(); return; }

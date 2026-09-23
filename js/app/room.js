@@ -209,7 +209,7 @@ export function buildRoom({ screens, settings, envMap }) {
     projects: { label: 'Projects', sub: 'payloads', anchor: side.projects.anchor, hit: [side.projects.screen], glow: [side.projects.screen], view: sideView('projects') },
     skills: { label: 'Skills', sub: 'systems', anchor: side.skills.anchor, hit: [side.skills.screen], glow: [side.skills.screen], view: sideView('skills') },
     experience: { label: 'Experience', sub: 'flight log', anchor: logAnchor, hit: logConsole.userData.screens, glow: logConsole.userData.screens, view: { pos: logWorld.clone().add(V3(0, 0.95, 3.4)), target: logWorld.clone().add(V3(0, -0.05, 0)) } },
-    contact: { label: 'Contact', sub: 'launch comms', anchor: clockAnchor, hit: [clock], glow: [clock], view: { pos: V3(0, 8.6, 7), target: V3(0, 8.6, -14) } },
+    contact: { label: 'Contact', sub: 'launch comms', anchor: clockAnchor, hit: [clock], glow: [clock], view: { pos: V3(0, 10.6, 6), target: V3(0, 10.2, -14) } },
     simulator: { label: 'Play Lunar Lander', sub: 'simulator', anchor: cabAnchor, hit: [cabBody, cabScreen, marquee], glow: [cabScreen], view: { pos: cabScreenWorld.clone().addScaledVector(cabFacing, 4.2).add(V3(0, 0.2, 0)), target: cabScreenWorld.clone() } },
     briefing: { label: 'Mission briefing', sub: 'start here', anchor: holoAnchor, hit: [ped, wire], glow: [], view: { pos: V3(0, 4.4, -1.2), target: V3(0, 3.1, -8.2) } },
   };
