@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Phone check · FA-01</title>
+<style>
+  body { margin: 0; padding: 16px; background: #03050a; color: #eef3ff; font: 14px/1.5 system-ui, sans-serif; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p { color: #9fb0d0; margin: 0 0 12px; }
+  table { width: 100%; border-collapse: collapse; font: 12.5px/1.4 ui-monospace, Consolas, monospace; }
+  td { padding: 7px 6px; border-bottom: 1px solid #1c2740; vertical-align: top; word-break: break-word; }
+  td:last-child { text-align: right; white-space: nowrap; font-weight: 700; }
+  .ok { color: #5dff9b; } .bad { color: #ff5a3c; } .wait { color: #ffb547; }
+  small { color: #7485a8; }
+</style>
+</head>
+<body>
+<h1>Phone check</h1>
+<p>Wait until every line has a result, then take a screenshot and send it to Claude.</p>
+<table id="t"></table>
+<p style="margin-top:12px"><small id="ua"></small></p>
+<script>
+(function () {
+  var t = document.getElementById('t');
+  document.getElementById('ua').textContent = navigator.userAgent;
+  function row(name) {
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td>' + name + '</td><td class="wait">…</td>';
+    t.appendChild(tr);
+    return function (txt, cls) { var c = tr.lastChild; c.textContent = txt; c.className = cls; };
+  }
+  function info(name, val, good) { row(name)(String(val), good ? 'ok' : 'bad'); }
+
+  info('Page + JavaScript', 'OK', true);
+  var gl = null, renderer = '';
+  try { var c = document.createElement('canvas'); gl = c.getContext('webgl2') || c.getContext('webgl'); } catch (e) {}
+  if (gl) { try { var ext = gl.getExtension('WEBGL_debug_renderer_info'); renderer = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : 'yes'; } catch (e) { renderer = 'yes'; } }
+  info('3D (WebGL)', gl ? renderer : 'NOT SUPPORTED', !!gl);
+  var im = !!(window.HTMLScriptElement && HTMLScriptElement.supports && HTMLScriptElement.supports('importmap'));
+  info('Import maps', im ? 'yes' : 'NO', im);
+  info('Screen', screen.width + '×' + screen.height + ' @' + (window.devicePixelRatio || 1) + 'x', true);
+  info('Memory / cores', (navigator.deviceMemory || '?') + ' GB / ' + (navigator.hardwareConcurrency || '?'), true);
+  var sd = navigator.connection && navigator.connection.saveData;
+  info('Data Saver', sd ? 'ON' : 'off', !sd);
+
+  var tests = [
+    ['This site (index.html)', '/index.html'],
+    ['Site style (app.css)', '/css/app.css'],
+    ['Site code (engine.js)', '/js/app/engine.js'],
+    ['Google Fonts', 'https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@700&display=swap'],
+    ['3D library (jsDelivr)', 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js'],
+    ['World map (jsDelivr)', 'https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/land-110m.json'],
+    ['ISS tracker', 'https://api.wheretheiss.at/v1/satellites/25544'],
+    ['NASA picture', 'https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&thumbs=true'],
+  ];
+  tests.forEach(function (x) {
+    var set = row(x[0]), t0 = Date.now(), done = false;
+    var timer = setTimeout(function () { if (!done) { done = true; set('NO ANSWER (15s)', 'bad'); } }, 15000);
+    fetch(x[1], { mode: x[1].charAt(0) === '/' ? 'same-origin' : 'cors', cache: 'no-store' })
+      .then(function (r) { return r.text().then(function (b) { return [r, b]; }); })
+      .then(function (a) { if (done) return; done = true; clearTimeout(timer); var ms = Date.now() - t0; set((a[0].ok ? '' : 'HTTP ' + a[0].status + ' · ') + ms + ' ms · ' + Math.round(a[1].length / 1024) + ' KB', a[0].ok ? (ms > 6000 ? 'wait' : 'ok') : 'bad'); })
+      .catch(function (e) { if (done) return; done = true; clearTimeout(timer); set('FAILED', 'bad'); });
+  });
+
+  // can the browser actually load the 3D library as a module?
+  var setMod = row('3D library as module'), t1 = Date.now();
+  window.__modOk = function (v) { setMod('OK · ' + (Date.now() - t1) + ' ms · r' + v, 'ok'); };
+  window.__modBad = function (e) { setMod('FAILED: ' + e, 'bad'); };
+  var s = document.createElement('script'); s.type = 'module';
+  s.textContent = "import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js').then(function(m){window.__modOk(m.REVISION)}).catch(function(e){window.__modBad(e && e.message)})";
+  document.body.appendChild(s);
+})();
+</script>
+</body>
+</html>

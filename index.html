@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" media="print" onload="this.media='all'">
   <link rel="stylesheet" href="/css/tokens.css">
   <link rel="stylesheet" href="/css/content.css">
   <link rel="stylesheet" href="/css/app.css">
@@ -94,6 +94,15 @@
   </dialog>
 
   <noscript><p class="nojs">This 3D portfolio needs JavaScript. <a href="/quick">Open the Quick view</a>.</p></noscript>
+  <script>
+  // Safety net: if the 3D room is slow to start (weak phone or slow internet), offer the Quick view.
+  setTimeout(function () {
+    var acts = document.getElementById('boot-actions'), boot = document.getElementById('boot');
+    if (!acts || !acts.hidden || !boot || boot.hidden) return;
+    var note = document.getElementById('boot-note');
+    if (note) note.innerHTML = 'Taking long? <a href="/quick" style="color:#7fe3ff;font-weight:600">Open the Quick view</a> — or keep waiting for the 3D room.';
+  }, 9000);
+  </script>
   <script type="module" src="/js/app/main.js"></script>
 </body>
 </html>

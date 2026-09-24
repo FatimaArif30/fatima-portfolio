@@ -29,7 +29,7 @@ async function boot() {
   const l2 = line('Loading flight software');
   let engine;
   try {
-    engine = await import('./engine.js');
+    engine = await Promise.race([import('./engine.js'), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 30000))]);
     l2();
   } catch (err) {
     console.error(err);
