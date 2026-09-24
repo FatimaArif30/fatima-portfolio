@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Star Eater · demo</title>
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<link rel="stylesheet" href="/games/demos/common.css">
+<style>
+  .board { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 10px); right: 12px; background: rgba(6, 12, 24, 0.6); border: 1px solid rgba(150,175,230,.25); border-radius: 8px; padding: 8px 10px; font-size: 11.5px; min-width: 150px; pointer-events: none; }
+  .board h3 { margin: 0 0 4px; font-size: 10px; letter-spacing: .18em; color: #7fe3ff; }
+  .board ol { margin: 0; padding-left: 18px; }
+  .board li.me { color: #ffb547; font-weight: 600; }
+  @media (max-width: 520px) { .board { font-size: 10.5px; min-width: 0; padding: 6px 8px; } .board li:nth-child(n+4):not(.me) { display: none; } }
+  #mini { position: fixed; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); width: 110px; height: 110px; border: 1px solid rgba(150,175,230,.3); border-radius: 50%; background: rgba(6,12,24,.6); pointer-events: none; inset: auto 12px calc(env(safe-area-inset-bottom, 0px) + 12px) auto; }
+  .boostbtn { position: fixed; left: 14px; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); width: 76px; height: 76px; border-radius: 50%; border: 2px solid rgba(252,61,33,.8); background: rgba(252,61,33,.25); color: #fff; font: 700 13px "Chakra Petch", sans-serif; letter-spacing: .08em; }
+  @media (pointer: fine) { .boostbtn { display: none; } }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud" id="hud" hidden><div><div class="big" id="mass">10</div><div class="small">mass · <span id="rank"></span></div></div></div>
+<div class="board" id="board" hidden><h3>BIGGEST IN THE GALAXY</h3><ol id="list"></ol></div>
+<canvas id="mini" width="220" height="220" hidden></canvas>
+<button class="boostbtn" id="boost" hidden>BOOST</button>
+<section class="overlay" id="start">
+  <div class="card">
+    <div class="eyebrow">Demo 2 · like Slither.io / Agar.io</div>
+    <h1>Star Eater</h1>
+    <p>You are a tiny black hole. Eat stardust and smaller things to grow. Avoid black holes bigger than you, or eat them when you’re bigger!</p>
+    <div class="keys">Mouse / finger: steer · Hold click or BOOST: speed up (costs mass)</div>
+    <button class="btn" id="go">Play</button>
+  </div>
+</section>
+<section class="overlay" id="over" hidden>
+  <div class="card">
+    <div class="eyebrow" id="o-eye">You got eaten</div>
+    <div class="stat" id="o-mass">0</div>
+    <p id="o-text"></p>
+    <div class="unlock" id="o-unlock"></div>
+    <button class="btn" id="again">Play again</button>
+  </div>
+</section>
+<script>
+(() => {
+const cv = document.getElementById('c'), g = cv.getContext('2d'), mini = document.getElementById('mini'), mg = mini.getContext('2d');
+const $ = (id) => document.getElementById(id);
+let W, H, DPR;
+function resize() { DPR = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; cv.width = W * DPR; cv.height = H * DPR; }
+addEventListener('resize', resize); resize();
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), lerp = (a, b, t) => a + (b - a) * t, R = (m) => Math.sqrt(m) * 2.2;
+const WORLD = 2400, FOOD = 1300, ROCKS = 55;
+
+const A = { c: null, init() { if (this.c) { this.c.resume(); return; } try { this.c = new AudioContext(); this.o = this.c.createGain(); this.o.gain.value = 0.8; this.o.connect(this.c.destination); } catch { this.c = null; } },
+  t(f, d, v = 0.08, type = 'sine', to) { if (!this.c) return; const t = this.c.currentTime, o = this.c.createOscillator(), gg = this.c.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (to) o.frequency.exponentialRampToValueAtTime(to, t + d); gg.gain.setValueAtTime(v, t); gg.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(gg).connect(this.o); o.start(t); o.stop(t + d + 0.02); } };
+
+const NAMES = ['Andromeda', 'Sagittarius A*', 'Vega', 'Orion', 'Nebula', 'Cygnus X-1', 'Pulsar', 'Quasar', 'Kepler', 'Rigel', 'Sirius', 'Titan'];
+const COLORS = ['#ff4fd8', '#7fe3ff', '#ffb547', '#5dff9b', '#c77dff', '#ff6a4a', '#3d7bff'];
+let best = 0; try { best = +localStorage.getItem('eat_best') || 0; } catch {}
+
+let st = 'start', me, bots, food, rocks, parts, cam, zoomv, pointer, boosting, t0, eaten;
+function mkHole(name, m, x, y, color, isMe) { return { name, m, x, y, vx: 0, vy: 0, color, me: !!isMe, tx: x, ty: y, think: 0, alive: true, spin: Math.random() * 6 }; }
+function rndFood() { return { x: Math.random() * WORLD, y: Math.random() * WORLD, m: 0.6 + Math.random() * 0.8, c: COLORS[Math.floor(Math.random() * COLORS.length)], tw: Math.random() * 6 }; }
+function rndRock() { return { x: Math.random() * WORLD, y: Math.random() * WORLD, m: 4 + Math.random() * 14, vx: (Math.random() - 0.5) * 20, vy: (Math.random() - 0.5) * 20, rot: Math.random() * 6, kind: Math.random() < 0.3 ? 'planet' : 'rock', c: COLORS[Math.floor(Math.random() * COLORS.length)] }; }
+function reset() {
+  me = mkHole('You', 10, WORLD / 2, WORLD / 2, '#ffffff', true);
+  bots = NAMES.slice(0, 11).map((n, i) => mkHole(n, 8 + Math.random() * (i < 3 ? 120 : 45), Math.random() * WORLD, Math.random() * WORLD, COLORS[i % COLORS.length]));
+  food = Array.from({ length: FOOD }, rndFood); rocks = Array.from({ length: ROCKS }, rndRock); parts = [];
+  cam = { x: me.x, y: me.y }; zoomv = 1; pointer = { x: W / 2 + 100, y: H / 2 }; boosting = false; eaten = 0;
+}
+
+addEventListener('pointermove', (e) => { pointer = { x: e.clientX, y: e.clientY }; });
+cv.addEventListener('pointerdown', (e) => { pointer = { x: e.clientX, y: e.clientY }; if (e.pointerType === 'mouse') boosting = true; });
+addEventListener('pointerup', (e) => { if (e.pointerType === 'mouse') boosting = false; });
+addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); if (st === 'play') boosting = true; else start(); } });
+addEventListener('keyup', (e) => { if (e.code === 'Space') boosting = false; });
+const bb = $('boost'); bb.addEventListener('pointerdown', (e) => { e.stopPropagation(); boosting = true; }); bb.addEventListener('pointerup', () => { boosting = false; }); bb.addEventListener('pointercancel', () => { boosting = false; });
+
+function start() { A.init(); reset(); st = 'play'; t0 = performance.now(); ['start', 'over'].forEach((i) => ($(i).hidden = true)); ['hud', 'board', 'mini', 'boost'].forEach((i) => ($(i).hidden = false)); }
+$('go').onclick = start; $('again').onclick = start;
+
+function toast(txt, color) { const d = document.createElement('div'); d.className = 'toast'; d.style.color = color; d.textContent = txt; document.body.appendChild(d); setTimeout(() => d.remove(), 1400); }
+function burst(x, y, c, n = 10) { for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, s = 40 + Math.random() * 120; parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, l: 0.6, c }); } }
+
+function die(by) {
+  st = 'dead'; A.t(300, 0.9, 0.2, 'sawtooth', 40); burst(me.x, me.y, '#fff', 40);
+  const final = Math.floor(me.m); const nb = final > best; best = Math.max(best, final); try { localStorage.setItem('eat_best', best); } catch {}
+  const secs = Math.round((performance.now() - t0) / 1000);
+  setTimeout(() => {
+    $('o-eye').textContent = `Eaten by ${by}`; $('o-mass').textContent = final;
+    $('o-text').textContent = `You swallowed ${eaten} things in ${secs}s. Best mass: ${best}${nb ? ' (new!)' : ''}`;
+    const bigger = [...bots].sort((a, b) => b.m - a.m)[0];
+    $('o-unlock').textContent = bigger ? `Galaxy #1 is ${bigger.name} at ${Math.floor(bigger.m)}. Can you eat it?` : '';
+    $('over').hidden = false; ['hud', 'board', 'mini', 'boost'].forEach((i) => ($(i).hidden = true));
+  }, 900);
+}
+
+function steer(h, tx, ty, dt, boost) {
+  const dx = tx - h.x, dy = ty - h.y, d = Math.hypot(dx, dy) || 1;
+  let sp = 260 / Math.pow(h.m, 0.22); if (boost && h.m > 12) { sp *= 1.9; h.m -= h.m * 0.35 * dt; if (Math.random() < 0.5) food.push({ x: h.x - dx / d * R(h.m), y: h.y - dy / d * R(h.m), m: 0.5, c: h.color, tw: 0 }); }
+  const k = Math.min(1, d / 60);
+  h.vx = lerp(h.vx, (dx / d) * sp * k, clamp(dt * 5, 0, 1)); h.vy = lerp(h.vy, (dy / d) * sp * k, clamp(dt * 5, 0, 1));
+  h.x = clamp(h.x + h.vx * dt, 0, WORLD); h.y = clamp(h.y + h.vy * dt, 0, WORLD);
+}
+
+function botBrain(b, dt) {
+  b.think -= dt;
+  if (b.think <= 0) {
+    b.think = 0.3 + Math.random() * 0.4;
+    const all = [me, ...bots].filter((o) => o !== b && o.alive);
+    let threat = null, prey = null, td = 1e9, pd = 1e9;
+    for (const o of all) { const d = Math.hypot(o.x - b.x, o.y - b.y); if (o.m > b.m * 1.15 && d < 420 && d < td) { threat = o; td = d; } if (b.m > o.m * 1.15 && d < 520 && d < pd && !(o.me && performance.now() - t0 < 8000)) { prey = o; pd = d; } }
+    if (threat) { b.tx = b.x - (threat.x - b.x) * 2; b.ty = b.y - (threat.y - b.y) * 2; b.boost = td < 200; }
+    else if (prey) { b.tx = prey.x; b.ty = prey.y; b.boost = pd < 250 && Math.random() < 0.3; }
+    else { let bf = null, bd = 1e9; for (let i = 0; i < 40; i++) { const f = food[Math.floor(Math.random() * food.length)]; if (!f) continue; const d = Math.hypot(f.x - b.x, f.y - b.y); if (d < bd) { bd = d; bf = f; } } if (bf) { b.tx = bf.x; b.ty = bf.y; } b.boost = false; }
+  }
+  steer(b, b.tx, b.ty, dt, b.boost);
+}
+
+function eatCheck(h, dt) {
+  const r = R(h.m), pr = r * 1.8 + 46; // gravity: stardust near a black hole gets pulled in
+  for (let i = food.length - 1; i >= 0; i--) { const f = food[i]; if (Math.abs(f.x - h.x) > pr || Math.abs(f.y - h.y) > pr) continue; const d2 = (f.x - h.x) ** 2 + (f.y - h.y) ** 2; if (d2 > pr * pr) continue;
+    if (d2 >= r * r) { const d = Math.sqrt(d2), pull = Math.min(d, (140 + 260 * (1 - d / pr)) * dt); f.x -= (f.x - h.x) / d * pull; f.y -= (f.y - h.y) / d * pull; continue; }
+    { h.m += f.m; food.splice(i, 1); if (h.me) { eaten++; if (Math.random() < 0.35) A.t(700 + Math.random() * 600, 0.05, 0.03, 'triangle'); } } }
+  for (let i = rocks.length - 1; i >= 0; i--) { const k = rocks[i]; if (h.m < k.m * 1.1) continue; const d = Math.hypot(k.x - h.x, k.y - h.y); if (d < r) { h.m += k.m * 0.8; rocks.splice(i, 1); if (h.me) { eaten++; A.t(300, 0.18, 0.08, 'sine', 120); burst(k.x, k.y, k.c, 8); } } }
+  for (const o of [me, ...bots]) {
+    if (o === h || !o.alive || !h.alive) continue;
+    if (o.me && performance.now() - t0 < 2500) continue; // spawn protection
+    if (h.m > o.m * 1.15 && Math.hypot(o.x - h.x, o.y - h.y) < r - R(o.m) * 0.4) {
+      h.m += o.m * 0.85; o.alive = false; burst(o.x, o.y, o.color, 30);
+      if (h.me) { eaten++; A.t(200, 0.5, 0.15, 'sine', 800); toast(`You ate ${o.name}!`, '#ffb547'); }
+      if (o.me) die(h.name);
+      else setTimeout(() => { Object.assign(o, mkHole(o.name, 8 + Math.random() * 30, Math.random() * WORLD, Math.random() * WORLD, o.color)); }, 3000);
+    }
+  }
+}
+
+function update(dt) {
+  for (const p of parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.94; p.vy *= 0.94; p.l -= dt; } parts = parts.filter((p) => p.l > 0);
+  for (const k of rocks) { k.x = (k.x + k.vx * dt + WORLD) % WORLD; k.y = (k.y + k.vy * dt + WORLD) % WORLD; k.rot += dt * 0.3; }
+  while (food.length < FOOD) food.push(rndFood()); while (rocks.length < ROCKS) rocks.push(rndRock());
+  if (st === 'play') {
+    const wx = cam.x + (pointer.x - W / 2) / zoomv, wy = cam.y + (pointer.y - H / 2) / zoomv;
+    steer(me, wx, wy, dt, boosting);
+  }
+  for (const b of bots) if (b.alive) botBrain(b, dt);
+  if (st === 'play') eatCheck(me, dt);
+  for (const b of bots) if (b.alive) eatCheck(b, dt);
+  for (const b of bots) if (b.alive && b.m > 400) b.m -= b.m * 0.01 * dt; // big bots slowly shrink so you can catch up
+  if (st === 'play') {
+    const tz = clamp(1.4 / Math.pow(R(me.m) / 7, 0.45), 0.25, 1.4); zoomv = lerp(zoomv, tz, clamp(dt * 1.5, 0, 1));
+    cam.x = lerp(cam.x, me.x, clamp(dt * 6, 0, 1)); cam.y = lerp(cam.y, me.y, clamp(dt * 6, 0, 1));
+    const all = [me, ...bots].filter((o) => o.alive).sort((a, b) => b.m - a.m);
+    const rank = all.indexOf(me) + 1;
+    $('mass').textContent = Math.floor(me.m); $('rank').textContent = `rank #${rank} of ${all.length}`;
+    $('list').innerHTML = all.slice(0, 6).map((o) => `<li class="${o.me ? 'me' : ''}">${o.name} · ${Math.floor(o.m)}</li>`).join('') + (rank > 6 ? `<li class="me" value="${rank}">You · ${Math.floor(me.m)}</li>` : '');
+    if (rank === 1 && !me.crowned) { me.crowned = true; toast('You are #1 in the galaxy!', '#ffb547'); A.t(523, 0.3); A.t(659, 0.3); A.t(784, 0.5); }
+  }
+}
+
+function hole(h, now) {
+  const x = (h.x - cam.x) * zoomv + W / 2, y = (h.y - cam.y) * zoomv + H / 2, r = R(h.m) * zoomv;
+  if (x < -r * 3 || x > W + r * 3 || y < -r * 3 || y > H + r * 3) return;
+  const glow = g.createRadialGradient(x, y, r * 0.6, x, y, r * 2.2); glow.addColorStop(0, h.color); glow.addColorStop(0.35, h.color + '55'); glow.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = glow; g.beginPath(); g.arc(x, y, r * 2.2, 0, Math.PI * 2); g.fill();
+  // accretion swirl
+  g.save(); g.translate(x, y); g.rotate(now * 0.002 + h.spin); g.strokeStyle = h.color; g.lineWidth = Math.max(1, r * 0.12); g.globalAlpha = 0.8;
+  for (let i = 0; i < 3; i++) { g.beginPath(); g.arc(0, 0, r * (1.15 + i * 0.18), i * 2, i * 2 + 1.6); g.stroke(); }
+  g.restore(); g.globalAlpha = 1;
+  g.fillStyle = '#000'; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = 1.2; g.stroke();
+  g.fillStyle = h.me ? '#ffb547' : '#fff'; g.font = `600 ${clamp(r * 0.45, 10, 18)}px "IBM Plex Mono", monospace`; g.textAlign = 'center';
+  g.fillText(h.name, x, y - r * 2.3 - 4);
+}
+
+function draw(now) {
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const bg = g.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H)); bg.addColorStop(0, '#0d0b2a'); bg.addColorStop(1, '#02030a');
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  // parallax grid
+  const gs = 120 * zoomv; g.strokeStyle = 'rgba(127,227,255,0.06)'; g.lineWidth = 1;
+  const ox = (-cam.x * zoomv + W / 2) % gs, oy = (-cam.y * zoomv + H / 2) % gs;
+  for (let x = ox; x < W; x += gs) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
+  for (let y = oy; y < H; y += gs) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+  // world edge
+  const ex = (0 - cam.x) * zoomv + W / 2, ey = (0 - cam.y) * zoomv + H / 2; g.strokeStyle = 'rgba(252,61,33,0.6)'; g.lineWidth = 3; g.strokeRect(ex, ey, WORLD * zoomv, WORLD * zoomv);
+  const S = (o) => [(o.x - cam.x) * zoomv + W / 2, (o.y - cam.y) * zoomv + H / 2];
+  for (const f of food) { const [x, y] = S(f); if (x < -5 || x > W + 5 || y < -5 || y > H + 5) continue; g.fillStyle = f.c; g.globalAlpha = 0.7 + 0.3 * Math.sin(now * 0.004 + f.tw); g.beginPath(); g.arc(x, y, Math.max(1.5, R(f.m) * zoomv * 0.9), 0, Math.PI * 2); g.fill(); }
+  g.globalAlpha = 1;
+  for (const k of rocks) {
+    const [x, y] = S(k), r = R(k.m) * zoomv * 0.9; if (x < -r || x > W + r || y < -r || y > H + r) continue;
+    if (k.kind === 'planet') { const pg = g.createRadialGradient(x - r * 0.4, y - r * 0.4, r * 0.1, x, y, r); pg.addColorStop(0, '#fff'); pg.addColorStop(0.3, k.c); pg.addColorStop(1, '#111'); g.fillStyle = pg; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); }
+    else { g.fillStyle = '#6d6259'; g.beginPath(); for (let i = 0; i < 8; i++) { const a = i / 8 * 6.28 + k.rot, rr = r * (0.8 + 0.2 * Math.sin(i * 2.7)); i ? g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr) : g.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } g.fill(); }
+    if (st === 'play' && me.m >= k.m * 1.1) { g.strokeStyle = 'rgba(93,255,155,0.5)'; g.lineWidth = 1; g.beginPath(); g.arc(x, y, r + 3, 0, Math.PI * 2); g.stroke(); }
+  }
+  const holes = [...bots.filter((b) => b.alive), ...(st === 'play' ? [me] : [])].sort((a, b) => a.m - b.m);
+  for (const h of holes) hole(h, now);
+  for (const p of parts) { const [x, y] = S(p); g.globalAlpha = p.l / 0.6; g.fillStyle = p.c; g.fillRect(x, y, 3, 3); } g.globalAlpha = 1;
+  // danger ring around bots that can eat you
+  if (st === 'play') for (const b of bots) if (b.alive && b.m > me.m * 1.15) { const [x, y] = S(b); const d = Math.hypot(b.x - me.x, b.y - me.y); if (d < 500) { g.strokeStyle = `rgba(252,61,33,${0.8 - d / 700})`; g.lineWidth = 2; g.setLineDash([6, 6]); g.beginPath(); g.arc(x, y, R(b.m) * zoomv * 1.6, 0, Math.PI * 2); g.stroke(); g.setLineDash([]); } }
+  // minimap
+  if (st === 'play') {
+    mg.clearRect(0, 0, 220, 220); mg.save(); mg.beginPath(); mg.arc(110, 110, 108, 0, 6.28); mg.clip(); mg.fillStyle = 'rgba(6,12,24,.4)'; mg.fillRect(0, 0, 220, 220);
+    for (const b of bots) if (b.alive) { mg.fillStyle = b.m > me.m * 1.15 ? '#fc3d21' : '#5dff9b'; mg.beginPath(); mg.arc(b.x / WORLD * 220, b.y / WORLD * 220, clamp(R(b.m) / 12, 2, 8), 0, 6.28); mg.fill(); }
+    mg.fillStyle = '#ffb547'; mg.beginPath(); mg.arc(me.x / WORLD * 220, me.y / WORLD * 220, 5, 0, 6.28); mg.fill(); mg.restore();
+  }
+}
+
+let last = performance.now();
+function loop(now) { const dt = Math.min((now - last) / 1000, 0.05); last = now; update(dt); draw(now); requestAnimationFrame(loop); }
+reset(); requestAnimationFrame(loop);
+if (location.search.includes('debug')) window.__eat = { get st() { return st; }, get me() { return me; }, start };
+})();
+</script>
+</body>
+</html>
